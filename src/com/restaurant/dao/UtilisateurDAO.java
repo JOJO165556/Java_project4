@@ -1,0 +1,119 @@
+package com.restaurant.dao;
+
+import com.restaurant.model.Utilisateur;
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+
+public class UtilisateurDAO {
+
+    // Construit un objet Utilisateur à partir d'une ligne de ResultSet
+    private Utilisateur fromResultSet(ResultSet rs) throws SQLException {
+        Utilisateur u = new Utilisateur();
+        u.setIdUtil(rs.getInt("id_util"));
+        u.setNomUtil(rs.getString("nom_util"));
+        u.setMdp(rs.getString("mdp"));
+        return u;
+    }
+
+    public int create(Utilisateur utilisateur) throws SQLException {
+        String sql = "INSERT INTO UTILISATEUR (nom_util, mdp) VALUES (?, ?)";
+        Connection conn = ConnectionDB.getConnection();
+        PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+
+        stmt.setString(1, utilisateur.getNomUtil());
+        stmt.setString(2, utilisateur.getMdp());
+
+        if (stmt.executeUpdate() > 0) {
+            ResultSet rs = stmt.getGeneratedKeys();
+            if (rs.next()) {
+                int id = rs.getInt(1);
+                utilisateur.setIdUtil(id);
+                rs.close(); stmt.close();
+                return id;
+            }
+            rs.close();
+        }
+        stmt.close();
+        return -1;
+    }
+
+    public Utilisateur findById(int id) throws SQLException {
+        String sql = "SELECT * FROM UTILISATEUR WHERE id_util = ?";
+        Connection conn = ConnectionDB.getConnection();
+        PreparedStatement stmt = conn.prepareStatement(sql);
+        stmt.setInt(1, id);
+        ResultSet rs = stmt.executeQuery();
+        Utilisateur u = rs.next() ? fromResultSet(rs) : null;
+        rs.close(); stmt.close();
+        return u;
+    }
+
+    public Utilisateur findByNom(String nomUtil) throws SQLException {
+        String sql = "SELECT * FROM UTILISATEUR WHERE nom_util = ?";
+        Connection conn = ConnectionDB.getConnection();
+        PreparedStatement stmt = conn.prepareStatement(sql);
+        stmt.setString(1, nomUtil);
+        ResultSet rs = stmt.executeQuery();
+        Utilisateur u = rs.next() ? fromResultSet(rs) : null;
+        rs.close(); stmt.close();
+        return u;
+    }
+
+    // Vérifie les identifiants et retourne l'utilisateur, ou null si incorrects
+    public Utilisateur authenticate(String nomUtil, String mdp) throws SQLException {
+        String sql = "SELECT * FROM UTILISATEUR WHERE nom_util = ? AND mdp = ?";
+        Connection conn = ConnectionDB.getConnection();
+        PreparedStatement stmt = conn.prepareStatement(sql);
+        stmt.setString(1, nomUtil);
+        stmt.setString(2, mdp);
+        ResultSet rs = stmt.executeQuery();
+        Utilisateur u = rs.next() ? fromResultSet(rs) : null;
+        rs.close(); stmt.close();
+        return u;
+    }
+
+    public List<Utilisateur> findAll() throws SQLException {
+        List<Utilisateur> liste = new ArrayList<>();
+        String sql = "SELECT * FROM UTILISATEUR ORDER BY nom_util";
+        Connection conn = ConnectionDB.getConnection();
+        Statement stmt = conn.createStatement();
+        ResultSet rs = stmt.executeQuery(sql);
+        while (rs.next()) liste.add(fromResultSet(rs));
+        rs.close(); stmt.close();
+        return liste;
+    }
+
+    public boolean update(Utilisateur utilisateur) throws SQLException {
+        String sql = "UPDATE UTILISATEUR SET nom_util=?, mdp=? WHERE id_util=?";
+        Connection conn = ConnectionDB.getConnection();
+        PreparedStatement stmt = conn.prepareStatement(sql);
+        stmt.setString(1, utilisateur.getNomUtil());
+        stmt.setString(2, utilisateur.getMdp());
+        stmt.setInt(3, utilisateur.getIdUtil());
+        boolean ok = stmt.executeUpdate() > 0;
+        stmt.close();
+        return ok;
+    }
+
+    public boolean delete(int id) throws SQLException {
+        String sql = "DELETE FROM UTILISATEUR WHERE id_util = ?";
+        Connection conn = ConnectionDB.getConnection();
+        PreparedStatement stmt = conn.prepareStatement(sql);
+        stmt.setInt(1, id);
+        boolean ok = stmt.executeUpdate() > 0;
+        stmt.close();
+        return ok;
+    }
+
+    public boolean existsByNom(String nomUtil) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM UTILISATEUR WHERE nom_util = ?";
+        Connection conn = ConnectionDB.getConnection();
+        PreparedStatement stmt = conn.prepareStatement(sql);
+        stmt.setString(1, nomUtil);
+        ResultSet rs = stmt.executeQuery();
+        boolean exists = rs.next() && rs.getInt(1) > 0;
+        rs.close(); stmt.close();
+        return exists;
+    }
+}

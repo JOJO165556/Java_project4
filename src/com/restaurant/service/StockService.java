@@ -1,45 +1,74 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.restaurant.service;
+
 import com.restaurant.model.MouvementStock;
 import com.restaurant.model.Produit;
 import com.restaurant.model.enums.TypeMouvement;
 import com.restaurant.dao.ProduitDAO;
 import com.restaurant.dao.MouvementStockDAO;
+import java.time.LocalDate;
 
-/**
- *
- * @author jojo
- */
 public class StockService {
+
+    private ProduitDAO produitDAO = new ProduitDAO();
+    private MouvementStockDAO mouvementDAO = new MouvementStockDAO();
+
+    // Applique un mouvement de stock : met à jour la quantité et enregistre l'historique
     public void traiterMouvement(MouvementStock mvt) throws Exception {
-    ProduitDAO produitDAO = new ProduitDAO();
-    MouvementStockDAO mouvementDAO = new MouvementStockDAO();
+        Produit p = mvt.getProduit();
+        int ancienStock = p.getStockActu();
+        int nouveauStock;
 
-    // 1. Récupérer le produit actuel pour avoir son stock
-    Produit p = mvt.getProduit();
-    int ancienStock = p.getStockActu();
-    int nouveauStock;
-
-    // 2. Calculer le nouveau stock
-    if (mvt.getType() == TypeMouvement.ENTREE) {
-        nouveauStock = ancienStock + mvt.getQuantite();
-    } else {
-        if (ancienStock < mvt.getQuantite()) {
-            throw new Exception("Stock insuffisant pour cette sortie !");
+        if (mvt.getQuantite() <= 0) {
+            throw new Exception("La quantité doit être supérieure à 0.");
         }
-        nouveauStock = ancienStock - mvt.getQuantite();
+
+        if (mvt.getType() == TypeMouvement.ENTREE) {
+            nouveauStock = ancienStock + mvt.getQuantite();
+        } else {
+            if (ancienStock < mvt.getQuantite())
+                throw new Exception("Stock insuffisant pour cette sortie !");
+            nouveauStock = ancienStock - mvt.getQuantite();
+        }
+
+        if (produitDAO.mettreAJourStock(p.getIdPro(), nouveauStock)) {
+            mouvementDAO.ajouter(mvt);
+            p.setStockActu(nouveauStock);
+        } else {
+            throw new Exception("Erreur lors de la mise à jour du stock en base.");
+        }
     }
 
-    // 3. Mettre à jour en base de données
-    boolean stockOk = produitDAO.mettreAJourStock(p.getIdPro(), nouveauStock);
-    if (stockOk) {
-        mouvementDAO.ajouter(mvt); // Ajoute le mouvement dans l'historique
-        p.setStockActu(nouveauStock); // Met à jour l'objet en mémoire
-    } else {
-        throw new Exception("Erreur lors de la mise à jour du stock en base.");
+    public void enregistrerEntree(int idProduit, int quantite, String motif) throws Exception {
+        Produit produit = produitDAO.getById(idProduit);
+        if (produit == null) throw new Exception("Produit non trouvé");
+
+        if (motif != null && motif.length() > 50) {
+            throw new Exception("Le motif ne doit pas dépasser 50 caractères.");
+        }
+
+        MouvementStock mvt = new MouvementStock();
+        mvt.setProduit(produit);
+        mvt.setType(TypeMouvement.ENTREE);
+        mvt.setQuantite(quantite);
+        mvt.setMotif(motif);
+        mvt.setDate(LocalDate.now());
+        traiterMouvement(mvt);
     }
-}
+
+    public void enregistrerSortie(int idProduit, int quantite, String motif) throws Exception {
+        Produit produit = produitDAO.getById(idProduit);
+        if (produit == null) throw new Exception("Produit non trouvé");
+
+        if (motif != null && motif.length() > 50) {
+            throw new Exception("Le motif ne doit pas dépasser 50 caractères.");
+        }
+
+        MouvementStock mvt = new MouvementStock();
+        mvt.setProduit(produit);
+        mvt.setType(TypeMouvement.SORTIE);
+        mvt.setQuantite(quantite);
+        mvt.setMotif(motif);
+        mvt.setDate(LocalDate.now());
+        traiterMouvement(mvt);
+    }
 }

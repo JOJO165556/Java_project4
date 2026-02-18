@@ -1,0 +1,60 @@
+# NetBeans specific
+nbproject/private/
+build/
+nbbuild/
+dist/
+nbdist/
+nbactions.xml
+nb-configuration.xml
+
+# Compiled class files
+*.class
+
+# Log files
+*.log
+
+# BlueJ files
+*.ctxt
+
+# Mobile Tools for Java (J2ME)
+.mtj.tmp/
+
+# Package Files #
+*.jar
+*.war
+*.ear
+
+# Virtual machines specific files #
+.venv
+.flaskenv
+
+# OS specific files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Windows specifics
+$RECYCLE.BIN/
+desktop.ini
+
+# Linux specifics
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# IDE Specifics
+.idea/
+.vscode/
+*.project
+*.classpath
+*.settings/
+
+# Specific project files
+/tmp/
+/sources.txt

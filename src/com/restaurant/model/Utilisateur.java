@@ -1,0 +1,67 @@
+package com.restaurant.model;
+
+/**
+ * Classe représentant un utilisateur du système
+ */
+public class Utilisateur {
+    private int idUtil;
+    private String nomUtil;
+    private String mdp;
+    
+    // Constructeurs
+    public Utilisateur() {}
+    
+    public Utilisateur(int idUtil, String nomUtil, String mdp) {
+        this.idUtil = idUtil;
+        this.nomUtil = nomUtil;
+        this.mdp = mdp;
+    }
+    
+    public Utilisateur(String nomUtil, String mdp) {
+        this.nomUtil = nomUtil;
+        this.mdp = mdp;
+    }
+    
+    // Getters et Setters
+    public int getIdUtil() {
+        return idUtil;
+    }
+    
+    public void setIdUtil(int idUtil) {
+        this.idUtil = idUtil;
+    }
+    
+    public String getNomUtil() {
+        return nomUtil;
+    }
+    
+    public void setNomUtil(String nomUtil) {
+        this.nomUtil = nomUtil;
+    }
+    
+    public String getMdp() {
+        return mdp;
+    }
+    
+    public void setMdp(String mdp) {
+        this.mdp = mdp;
+    }
+    
+    @Override
+    public String toString() {
+        return nomUtil;
+    }
+    
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (obj == null || getClass() != obj.getClass()) return false;
+        Utilisateur that = (Utilisateur) obj;
+        return nomUtil.equals(that.nomUtil);
+    }
+    
+    @Override
+    public int hashCode() {
+        return nomUtil.hashCode();
+    }
+}

@@ -1,7 +1,3 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.restaurant.view;
 
 import com.restaurant.controller.StockController;
@@ -14,11 +10,7 @@ import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.util.List;
 
-/**
- *
- * @author jojo
- */
-public class StockView extends JFrame {
+public class StockView extends JPanel {
 
     private JComboBox<Produit> comboProduits;
     private JTextField txtQuantite, txtMotif;
@@ -29,24 +21,18 @@ public class StockView extends JFrame {
     private final StockController controller;
 
     public StockView() {
-        setTitle("Gestion du Stock - Restaurant");
-        setSize(850, 600);
-        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        setLocationRelativeTo(null);
-
         initAndLayout();
         this.controller = new StockController(this);
 
         chargerProduits();
-        actualiserHistorique(); // Charger l'historique au démarrage
+        actualiserHistorique();
     }
 
     private void initAndLayout() {
         setLayout(new BorderLayout(15, 15));
 
-        // FORMULAIRE 
+        // Formulaire de saisie d'un mouvement
         JPanel panelForm = new JPanel(new GridLayout(5, 2, 10, 10));
-        panelForm.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         panelForm.setBorder(BorderFactory.createTitledBorder("Nouveau Mouvement"));
 
         panelForm.add(new JLabel("Produit :"));
@@ -78,7 +64,7 @@ public class StockView extends JFrame {
         panelForm.add(new JLabel());
         panelForm.add(btnValider);
 
-        // TABLEAU 
+        // Tableau de l'historique des mouvements
         String[] columns = {"ID", "Produit", "Type", "Quantité", "Date", "Motif"};
         tableModel = new DefaultTableModel(columns, 0);
         tableHistorique = new JTable(tableModel);
@@ -94,16 +80,14 @@ public class StockView extends JFrame {
     public void actualiserHistorique() {
         try {
             tableModel.setRowCount(0);
-            MouvementStockDAO dao = new MouvementStockDAO();
-            List<MouvementStock> liste = dao.listerHistorique();
-            for (MouvementStock m : liste) {
+            for (MouvementStock m : new MouvementStockDAO().listerHistorique()) {
                 tableModel.addRow(new Object[]{
                     m.getId(), m.getProduit().getNomPro(), m.getType(),
                     m.getQuantite(), m.getDate(), m.getMotif()
                 });
             }
         } catch (Exception e) {
-            System.err.println("Erreur table : " + e.getMessage());
+            System.err.println("Erreur chargement historique : " + e.getMessage());
         }
     }
 
@@ -111,39 +95,22 @@ public class StockView extends JFrame {
         txtQuantite.setText("");
         txtMotif.setText("");
         rbEntree.setSelected(true);
-        if (comboProduits.getItemCount() > 0) {
-            comboProduits.setSelectedIndex(0);
-        }
+        if (comboProduits.getItemCount() > 0) comboProduits.setSelectedIndex(0);
         txtQuantite.requestFocus();
     }
 
     private void chargerProduits() {
         try {
             comboProduits.removeAllItems();
-            List<Produit> produits = new ProduitDAO().getAll();
-            for (Produit p : produits) {
-                comboProduits.addItem(p);
-            }
+            for (Produit p : new ProduitDAO().getAll()) comboProduits.addItem(p);
         } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "Erreur produits : " + e.getMessage());
+            JOptionPane.showMessageDialog(this, "Erreur chargement produits : " + e.getMessage());
         }
     }
 
-    // Getters pour le Controller
-    public Produit getProduitSelectionne() {
-        return (Produit) comboProduits.getSelectedItem();
-    }
-
-    public String getQuantiteSaisie() {
-        return txtQuantite.getText();
-    }
-
-    public boolean isEntreeSelectionnee() {
-        return rbEntree.isSelected();
-    }
-
-    public String getMotifSaisi() {
-        return txtMotif.getText();
-    }
-
+    // Getters pour le contrôleur
+    public Produit getProduitSelectionne() { return (Produit) comboProduits.getSelectedItem(); }
+    public String getQuantiteSaisie() { return txtQuantite.getText(); }
+    public boolean isEntreeSelectionnee() { return rbEntree.isSelected(); }
+    public String getMotifSaisi() { return txtMotif.getText(); }
 }
