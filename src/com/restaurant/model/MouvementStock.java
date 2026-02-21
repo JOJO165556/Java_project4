@@ -1,16 +1,9 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.restaurant.model;
 
 import com.restaurant.model.enums.TypeMouvement;
 import java.time.LocalDate;
 
-/**
- *
- * @author jojo
- */
+// Représente un mouvement de stock (entrée ou sortie)
 public class MouvementStock {
 
     private int id;
@@ -23,7 +16,6 @@ public class MouvementStock {
     public MouvementStock() {
     }
 
-    // Getters et Setters
     public int getId() {
         return id;
     }
@@ -72,4 +64,11 @@ public class MouvementStock {
         this.motif = motif;
     }
 
+    public String getReference() {
+        if (type == com.restaurant.model.enums.TypeMouvement.ENTREE) {
+            return "FAC-ACH-" + String.format("%04d", id);
+        } else {
+            return "FAC-VEN-" + String.format("%04d", id);
+        }
+    }
 }

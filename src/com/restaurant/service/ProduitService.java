@@ -3,49 +3,60 @@ package com.restaurant.service;
 import com.restaurant.dao.ProduitDAO;
 import com.restaurant.model.Produit;
 import java.util.List;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class ProduitService {
+    private static final Logger logger = LogManager.getLogger(ProduitService.class);
 
     private ProduitDAO produitDAO;
 
-    public ProduitService() {
-        this.produitDAO = new ProduitDAO();
+    public ProduitService(ProduitDAO produitDAO) {
+        this.produitDAO = produitDAO;
     }
 
-    // Valide les données et ajoute le produit en base
+    // Ajoute un nouveau produit après validation
     public boolean ajouterProduit(String nom, int idCat, double prix, int stock, int seuil) {
-        if (!valider(nom, prix, stock, seuil)) return false;
+        if (!valider(nom, prix, stock, seuil))
+            return false;
         return produitDAO.ajouter(new Produit(nom.trim(), idCat, prix, stock, seuil));
     }
 
-    // Valide les données et met à jour le produit en base
+    // Modifie un produit existant après validation
     public boolean modifierProduit(int idPro, String nom, int idCat, double prix, int stock, int seuil) {
-        if (!valider(nom, prix, stock, seuil)) return false;
+        if (!valider(nom, prix, stock, seuil))
+            return false;
         return produitDAO.modifier(new Produit(idPro, nom.trim(), idCat, prix, stock, seuil));
     }
 
-    public boolean supprimerProduit(int idPro) {
-        return produitDAO.supprimer(idPro);
+    // Supprime un produit s'il n'est pas lié à une commande
+    public boolean supprimerProduit(int idPro) throws ProduitDAO.ProduitLieACommandeException {
+        return produitDAO.deleteProduit(idPro);
     }
 
+    // Récupère tous les produits
     public List<Produit> getAllProduits() {
         return produitDAO.getAll();
     }
 
+    // Récupère un produit par son ID
     public Produit getProduitById(int idPro) {
         return produitDAO.getById(idPro);
     }
 
-    // Retourne tous les produits si la recherche est vide, sinon filtre par nom
+    // Recherche des produits par nom
     public List<Produit> rechercherProduits(String nom) {
-        if (nom == null || nom.trim().isEmpty()) return getAllProduits();
+        if (nom == null || nom.trim().isEmpty())
+            return getAllProduits();
         return produitDAO.rechercherParNom(nom.trim());
     }
 
+    // Récupère les produits d'une catégorie
     public List<Produit> getProduitsParCategorie(int idCat) {
         return produitDAO.getByCategorie(idCat);
     }
 
+    // Récupère les produits dont le stock est sous le seuil
     public List<Produit> getProduitsSousSeuilAlerte() {
         return produitDAO.getProduitsSousSeuilAlerte();
     }
@@ -55,22 +66,21 @@ public class ProduitService {
         return p != null && p.isSousSeuilAlerte();
     }
 
-    // Règles de validation communes à l'ajout et à la modification
     private boolean valider(String nom, double prix, int stock, int seuil) {
         if (nom == null || nom.trim().isEmpty()) {
-            System.err.println("Le nom du produit ne peut pas être vide");
+            logger.warn("Le nom du produit ne peut pas être vide");
             return false;
         }
         if (nom.length() > 50) {
-            System.err.println("Le nom ne doit pas dépasser 50 caractères");
+            logger.warn("Le nom ne doit pas dépasser 50 caractères");
             return false;
         }
         if (prix <= 0) {
-            System.err.println("Le prix doit être supérieur à 0");
+            logger.warn("Le prix doit être supérieur à 0");
             return false;
         }
         if (stock < 0 || seuil < 0) {
-            System.err.println("Le stock et le seuil ne peuvent pas être négatifs");
+            logger.warn("Le stock et le seuil ne peuvent pas être négatifs");
             return false;
         }
         return true;

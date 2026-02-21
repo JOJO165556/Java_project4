@@ -4,28 +4,28 @@ import com.restaurant.model.Produit;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class ProduitDAO {
+    private static final Logger logger = LogManager.getLogger(ProduitDAO.class);
 
-    // Requête SQL réutilisable pour récupérer les produits avec leur catégorie
-    private static final String SELECT_BASE =
-        "SELECT p.*, c.libelle_cat FROM PRODUIT p " +
-        "JOIN CATEGORIE c ON p.id_cat = c.id_cat ";
+    private static final String SELECT_BASE = "SELECT p.*, c.libelle_cat FROM PRODUIT p " +
+            "JOIN CATEGORIE c ON p.id_cat = c.id_cat ";
 
-    // Construit un objet Produit à partir d'une ligne de ResultSet
     private Produit fromResultSet(ResultSet rs) throws SQLException {
         Produit p = new Produit(
-            rs.getInt("id_pro"),
-            rs.getString("nom_pro"),
-            rs.getInt("id_cat"),
-            rs.getDouble("prix_vente"),
-            rs.getInt("stock_actu"),
-            rs.getInt("seuil_alerte")
-        );
+                rs.getInt("id_pro"),
+                rs.getString("nom_pro"),
+                rs.getInt("id_cat"),
+                rs.getDouble("prix_vente"),
+                rs.getInt("stock_actu"),
+                rs.getInt("seuil_alerte"));
         p.setNomCategorie(rs.getString("libelle_cat"));
         return p;
     }
 
+    // Ajoute un produit et récupère son ID généré
     public boolean ajouter(Produit produit) {
         String sql = "INSERT INTO PRODUIT (nom_pro, id_cat, prix_vente, stock_actu, seuil_alerte) VALUES (?, ?, ?, ?, ?)";
         Connection conn = ConnectionDB.getConnection();
@@ -39,15 +39,17 @@ public class ProduitDAO {
 
             if (pstmt.executeUpdate() > 0) {
                 ResultSet rs = pstmt.getGeneratedKeys();
-                if (rs.next()) produit.setIdPro(rs.getInt(1));
+                if (rs.next())
+                    produit.setIdPro(rs.getInt(1));
                 return true;
             }
         } catch (SQLException e) {
-            System.err.println("Erreur ajout produit : " + e.getMessage());
+            logger.warn("Erreur ajout produit : " + e.getMessage());
         }
         return false;
     }
 
+    // Met à jour les informations d'un produit
     public boolean modifier(Produit produit) {
         String sql = "UPDATE PRODUIT SET nom_pro=?, id_cat=?, prix_vente=?, stock_actu=?, seuil_alerte=? WHERE id_pro=?";
         Connection conn = ConnectionDB.getConnection();
@@ -62,20 +64,29 @@ public class ProduitDAO {
 
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("Erreur modification produit : " + e.getMessage());
+            logger.warn("Erreur modification produit : " + e.getMessage());
         }
         return false;
     }
 
-    public boolean supprimer(int idPro) {
+    /**
+     * Supprime un produit par son ID.
+     * 
+     * @throws ProduitLieACommandeException si le produit est lié à des commandes
+     *                                      (MySQL error 1451)
+     */
+    // Supprime un produit par ID
+    public boolean deleteProduit(int idPro) throws ProduitLieACommandeException {
         String sql = "DELETE FROM PRODUIT WHERE id_pro = ?";
         Connection conn = ConnectionDB.getConnection();
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
             pstmt.setInt(1, idPro);
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("Erreur suppression produit : " + e.getMessage());
+            if (e.getErrorCode() == 1451) {
+                throw new ProduitLieACommandeException(idPro);
+            }
+            logger.warn("Erreur suppression produit : " + e.getMessage());
         }
         return false;
     }
@@ -87,9 +98,10 @@ public class ProduitDAO {
 
             pstmt.setInt(1, idPro);
             ResultSet rs = pstmt.executeQuery();
-            if (rs.next()) return fromResultSet(rs);
+            if (rs.next())
+                return fromResultSet(rs);
         } catch (SQLException e) {
-            System.err.println("Erreur récupération produit : " + e.getMessage());
+            logger.warn("Erreur récupération produit : " + e.getMessage());
         }
         return null;
     }
@@ -99,11 +111,12 @@ public class ProduitDAO {
         String sql = SELECT_BASE + "ORDER BY p.nom_pro";
         Connection conn = ConnectionDB.getConnection();
         try (Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
+                ResultSet rs = stmt.executeQuery(sql)) {
 
-            while (rs.next()) produits.add(fromResultSet(rs));
+            while (rs.next())
+                produits.add(fromResultSet(rs));
         } catch (SQLException e) {
-            System.err.println("Erreur récupération produits : " + e.getMessage());
+            logger.warn("Erreur récupération produits : " + e.getMessage());
         }
         return produits;
     }
@@ -116,9 +129,10 @@ public class ProduitDAO {
 
             pstmt.setString(1, "%" + nom + "%");
             ResultSet rs = pstmt.executeQuery();
-            while (rs.next()) produits.add(fromResultSet(rs));
+            while (rs.next())
+                produits.add(fromResultSet(rs));
         } catch (SQLException e) {
-            System.err.println("Erreur recherche produit : " + e.getMessage());
+            logger.warn("Erreur recherche produit : " + e.getMessage());
         }
         return produits;
     }
@@ -131,24 +145,26 @@ public class ProduitDAO {
 
             pstmt.setInt(1, idCat);
             ResultSet rs = pstmt.executeQuery();
-            while (rs.next()) produits.add(fromResultSet(rs));
+            while (rs.next())
+                produits.add(fromResultSet(rs));
         } catch (SQLException e) {
-            System.err.println("Erreur récupération par catégorie : " + e.getMessage());
+            logger.warn("Erreur récupération par catégorie : " + e.getMessage());
         }
         return produits;
     }
 
-    // Retourne les produits dont le stock est inférieur au seuil d'alerte
+    // Récupère les produits en rupture de stock/seuil
     public List<Produit> getProduitsSousSeuilAlerte() {
         List<Produit> produits = new ArrayList<>();
         String sql = SELECT_BASE + "WHERE p.stock_actu < p.seuil_alerte ORDER BY p.stock_actu";
         Connection conn = ConnectionDB.getConnection();
         try (Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
+                ResultSet rs = stmt.executeQuery(sql)) {
 
-            while (rs.next()) produits.add(fromResultSet(rs));
+            while (rs.next())
+                produits.add(fromResultSet(rs));
         } catch (SQLException e) {
-            System.err.println("Erreur produits sous seuil : " + e.getMessage());
+            logger.warn("Erreur produits sous seuil : " + e.getMessage());
         }
         return produits;
     }
@@ -162,8 +178,21 @@ public class ProduitDAO {
             pstmt.setInt(2, idPro);
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("Erreur mise à jour stock : " + e.getMessage());
+            logger.warn("Erreur mise à jour stock : " + e.getMessage());
         }
         return false;
+    }
+
+    public static class ProduitLieACommandeException extends Exception {
+        private final int idProduit;
+
+        public ProduitLieACommandeException(int idProduit) {
+            super("Le produit #" + idProduit + " est lié à des commandes existantes.");
+            this.idProduit = idProduit;
+        }
+
+        public int getIdProduit() {
+            return idProduit;
+        }
     }
 }
