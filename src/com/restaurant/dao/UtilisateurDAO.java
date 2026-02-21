@@ -8,6 +8,7 @@ import com.restaurant.model.enums.Role;
 
 public class UtilisateurDAO {
 
+    // Convertit un résultat SQL en objet Utilisateur
     private Utilisateur fromResultSet(ResultSet rs) throws SQLException {
         Utilisateur u = new Utilisateur();
         u.setIdUtil(rs.getInt("id_util"));
@@ -26,7 +27,19 @@ public class UtilisateurDAO {
         return u;
     }
 
-    // Crée un nouvel utilisateur en base
+    // Compte le nombre total d'utilisateurs
+    public int count() throws SQLException {
+        String sql = "SELECT COUNT(*) FROM UTILISATEUR";
+        Connection conn = ConnectionDB.getConnection();
+        Statement stmt = conn.createStatement();
+        ResultSet rs = stmt.executeQuery(sql);
+        int count = rs.next() ? rs.getInt(1) : 0;
+        rs.close();
+        stmt.close();
+        return count;
+    }
+
+    // Crée un nouvel utilisateur
     public int create(Utilisateur utilisateur) throws SQLException {
         String sql = "INSERT INTO UTILISATEUR (nom_util, mdp, role) VALUES (?, ?, ?)";
         Connection conn = ConnectionDB.getConnection();
@@ -51,6 +64,7 @@ public class UtilisateurDAO {
         return -1;
     }
 
+    // Recherche par identifiant
     public Utilisateur findById(int id) throws SQLException {
         String sql = "SELECT * FROM UTILISATEUR WHERE id_util = ?";
         Connection conn = ConnectionDB.getConnection();
@@ -63,6 +77,7 @@ public class UtilisateurDAO {
         return u;
     }
 
+    // Recherche par nom
     public Utilisateur findByNom(String nomUtil) throws SQLException {
         String sql = "SELECT * FROM UTILISATEUR WHERE nom_util = ?";
         Connection conn = ConnectionDB.getConnection();
@@ -75,7 +90,7 @@ public class UtilisateurDAO {
         return u;
     }
 
-    // Vérifie les identifiants pour l'authentification
+    // Vérifie les identifiants
     public Utilisateur authenticate(String nomUtil, String mdp) throws SQLException {
         String sql = "SELECT * FROM UTILISATEUR WHERE nom_util = ? AND mdp = ?";
         Connection conn = ConnectionDB.getConnection();
@@ -89,6 +104,7 @@ public class UtilisateurDAO {
         return u;
     }
 
+    // Récupère tous les utilisateurs
     public List<Utilisateur> findAll() throws SQLException {
         List<Utilisateur> liste = new ArrayList<>();
         String sql = "SELECT * FROM UTILISATEUR ORDER BY nom_util";
@@ -102,6 +118,7 @@ public class UtilisateurDAO {
         return liste;
     }
 
+    // Met à jour un utilisateur
     public boolean update(Utilisateur utilisateur) throws SQLException {
         String sql = "UPDATE UTILISATEUR SET nom_util=?, mdp=?, role=? WHERE id_util=?";
         Connection conn = ConnectionDB.getConnection();
@@ -115,6 +132,7 @@ public class UtilisateurDAO {
         return ok;
     }
 
+    // Supprime un utilisateur
     public boolean delete(int id) throws SQLException {
         String sql = "DELETE FROM UTILISATEUR WHERE id_util = ?";
         Connection conn = ConnectionDB.getConnection();
@@ -125,6 +143,7 @@ public class UtilisateurDAO {
         return ok;
     }
 
+    // Vérifie l'existence d'un nom
     public boolean existsByNom(String nomUtil) throws SQLException {
         String sql = "SELECT COUNT(*) FROM UTILISATEUR WHERE nom_util = ?";
         Connection conn = ConnectionDB.getConnection();

@@ -1,254 +1,112 @@
-# Gestion Restaurant - Application de Gestion de Restaurant
+# Gestion Restaurant
 
-## 📋 Description
-
-Application de bureau Java pour la gestion d'un restaurant, développée avec une architecture en **4 couches logiques** (Vue, Contrôleur, Service, DAO) et une interface Swing moderne.
+Application de bureau Java pour la gestion d'un restaurant, développée avec une architecture **MVC 4 couches** et une interface Swing moderne.
 
 ## 🏗️ Architecture
 
-L'application suit une architecture MVC (Modèle-Vue-Contrôleur) :
-
 ```
 com.restaurant/
-├── model          → Entités (classes métier)
-│   ├── Categorie.java
-│   ├── Produit.java
-│   ├── MouvementStock.java
-│   ├── Commande.java
-│   ├── LigneCommande.java
-│   ├── Utilisateur.java
-│   └── enums
-│        ├── TypeMouvement.java
-│        ├── EtatCommande.java
-│        └── Role.java
-│
-├── dao            → Accès à la base de données (JDBC)
-│   ├── ConnectionDB.java
-│   ├── CategorieDAO.java
-│   ├── ProduitDAO.java          ← inclut ProduitLieACommandeException
-│   ├── MouvementStockDAO.java
-│   ├── CommandeDAO.java
-│   ├── LigneCommandeDAO.java
-│   └── UtilisateurDAO.java
-│
-├── service        → Logique métier (validation + règles de gestion)
-│   ├── AuthService.java
-│   ├── CategorieService.java
-│   ├── ProduitService.java
-│   ├── StockService.java
-│   ├── CommandeService.java
-│   ├── StatistiqueService.java
-│   ├── PrintService.java
-│   ├── PdfExportService.java
-│   ├── CsvService.java
-│   └── DatabaseBackupService.java
-│
-├── controller     → Contrôleurs (liaison View ↔ Service)
-│   ├── LoginController.java
-│   ├── ProduitController.java
-│   ├── StockController.java
-│   ├── CommandeController.java
-│   ├── StatistiqueController.java
-│   └── DatabaseController.java
-│
-├── view           → Interfaces graphiques (Swing)
-│   ├── SplashScreen.java
-│   ├── LoginView.java
-│   ├── MainView.java
-│   ├── ProduitView.java
-│   ├── StockView.java
-│   ├── CommandeView.java
-│   ├── StatistiqueView.java
-│   └── DatabaseView.java
-│
-└── utils          → Classes utilitaires et support
-    ├── DesignSystem.java        ← couleurs, polices, composants centralisés
-    ├── ValidationUtils.java
-    ├── PasswordUtils.java
-    ├── DateUtils.java
-    └── DatabaseUpdater.java
+├── model      → Entités (Categorie, Produit, Commande, LigneCommande, MouvementStock, Utilisateur + enums)
+├── dao        → Accès SQLite JDBC (ConnectionDB, CategorieDAO, ProduitDAO, CommandeDAO…)
+├── service    → Logique métier (AuthService, CommandeService, StockService, StatistiqueService…)
+├── controller → Orchestration Vue ↔ Service (Login, Produit, Commande, Stock, Stat, Admin, DB)
+├── view       → Interfaces Swing (SplashScreen, LoginView, MainView, ProduitView…)
+└── utils      → Design System, Validation, PasswordUtils, DateUtils, ResourceUtils
 ```
 
-## 🗄️ Base de données
+## 🗄️ Base de données (SQLite)
 
-### Schéma SQL
+Base de données autonome dans `data/gestion_restaurant.db` — aucun serveur requis.
 
 ```sql
-CREATE DATABASE gestion_restaurant;
-
-CREATE TABLE CATEGORIE (
-    id_cat INT NOT NULL AUTO_INCREMENT,
-    libelle_cat VARCHAR(30) NOT NULL UNIQUE,
-    PRIMARY KEY(id_cat)
-);
-
-CREATE TABLE PRODUIT (
-    id_pro INT NOT NULL AUTO_INCREMENT,
-    nom_pro VARCHAR(50) NOT NULL,
-    id_cat INT NOT NULL,
-    prix_vente DECIMAL(10,2) NOT NULL CHECK(prix_vente > 0),
-    stock_actu INT NOT NULL CHECK(stock_actu >= 0),
-    seuil_alerte INT NOT NULL,
-    PRIMARY KEY(id_pro),
-    FOREIGN KEY(id_cat) REFERENCES CATEGORIE(id_cat)
-);
-
-CREATE TABLE MOUVEMENT_STOCK (
-    id_mvt INT NOT NULL AUTO_INCREMENT,
-    type VARCHAR(6) NOT NULL CHECK(type IN('ENTREE', 'SORTIE')),
-    id_pro INT NOT NULL,
-    quantite INT NOT NULL CHECK(quantite > 0),
-    date DATE NOT NULL,
-    motif VARCHAR(50),
-    PRIMARY KEY(id_mvt),
-    FOREIGN KEY(id_pro) REFERENCES PRODUIT(id_pro)
-);
-
-CREATE TABLE COMMANDE (
-    id_cmde INT NOT NULL AUTO_INCREMENT,
-    date DATE NOT NULL,
-    etat VARCHAR(8) NOT NULL DEFAULT 'EN_COURS'
-        CHECK(etat IN('EN_COURS', 'VALIDEE', 'ANNULEE')),
-    total DECIMAL(10,2) NOT NULL,
-    PRIMARY KEY(id_cmde)
-);
-
-CREATE TABLE LIGNE_COMMANDE (
-    id_lig INT NOT NULL AUTO_INCREMENT,
-    id_cmde INT NOT NULL,
-    id_pro INT NOT NULL,
-    qte_lig INT NOT NULL CHECK(qte_lig > 0),
-    prix_unit DECIMAL(10,2) NOT NULL,
-    montant DECIMAL(10,2) AS (qte_lig * prix_unit) STORED,
-    PRIMARY KEY(id_lig),
-    FOREIGN KEY(id_pro) REFERENCES PRODUIT(id_pro),
-    FOREIGN KEY(id_cmde) REFERENCES COMMANDE(id_cmde)
-);
-
-CREATE TABLE UTILISATEUR (
-    id_uti INT NOT NULL AUTO_INCREMENT,
-    nom_uti VARCHAR(50) NOT NULL UNIQUE,
-    mdp VARCHAR(256) NOT NULL,
-    role VARCHAR(8) NOT NULL DEFAULT 'CAISSIER'
-        CHECK(role IN('ADMIN', 'CAISSIER')),
-    PRIMARY KEY(id_uti)
-);
+CATEGORIE      (id_cat, libelle_cat)
+PRODUIT        (id_pro, nom_pro, id_cat, prix_vente, stock_actu, seuil_alerte)
+COMMANDE       (id_cmde, date, etat, total)
+LIGNE_COMMANDE (id_lig, id_cmde, id_pro, qte_lig, prix_unit)
+MVT_STOCK      (id_mvt, id_pro, type, quantite, date, motif)
+UTILISATEUR    (id_uti, nom_util, mdp, role)
 ```
 
-## 🚀 Installation et Configuration
+## 🚀 Installation
 
 ### Prérequis
 
-- Java 21 (Recommandé) ou supérieur
-- MySQL Server 8.0 ou supérieur
-- NetBeans IDE (recommandé)
-- Bibliothèques dans `/lib` : JFreeChart, iText, Apache POI, Log4j2, MySQL Connector/J
+- **Java 21+**
+- **Ant** (pour le build manuel)
+- Bibliothèques dans `/lib` : JFreeChart, iText, Apache POI, Log4j2, SQLite JDBC
 
-### Configuration
-
-1. **Base de données**
-   - Démarrer le serveur MySQL
-   - Exécuter le script SQL fourni : `database_setup.sql`
-
-2. **Connexion** — créer `config.properties` à la racine du projet (fichier non versionné) :
-   ```properties
-   db.url=jdbc:mysql://localhost:3306/gestion_restaurant
-   db.user=root
-   db.password=votre_mot_de_passe
-   ```
-
-3. **Comptes par défaut**
-
-   | Rôle | Login | Mot de passe |
-   |---|---|---|
-   | Admin | `admin` | `admin` |
-   | Caissier | `caissier` | `caissier` |
-
-### Compilation et Exécution
+### Build manuel
 
 ```bash
-# Compilation
-javac -d bin -cp "src/:lib/*" $(find src -name "*.java")
-
-# Exécution
-java -cp "bin:lib/*" com.restaurant.Main
+ant jar        # Compilation
+ant package    # Installeur Linux (deb/rpm)
 ```
 
-Ou directement depuis **NetBeans** : `Run Project`.
+### Releases automatiques (GitHub)
+
+Chaque tag déclenche un build GitHub Actions qui publie automatiquement :
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+➡️ **[Télécharger la dernière version](../../releases/latest)**
+
+| Plateforme | Format |
+|---|---|
+| 🐧 Debian/Ubuntu | `.deb` |
+| 🧅 Fedora/RHEL | `.rpm` |
+| 🪟 Windows | `.exe` |
 
 ## 📱 Fonctionnalités
 
 ### 🔐 Authentification & Sécurité
-- Connexion avec identifiant et mot de passe (haché BCrypt)
-- Rôles **Admin** et **Caissier** — accès aux modules selon le rôle
-- Déconnexion automatique après 10 minutes d'inactivité
+- Connexion avec identifiant + mot de passe (SHA-256)
+- Rôles **Admin** et **Caissier** avec accès différenciés
+- Déconnexion automatique après 10 min d'inactivité
 
-### 🍽️ Gestion des produits et catégories
-- CRUD complet sur les catégories et produits
-- Recherche rapide par nom (auto-complétion)
-- Coloration automatique : orange = alerte, rouge = rupture
-- Import / Export **CSV**
-
-### 📦 Gestion du stock
-- Enregistrement des entrées et sorties de stock
-- Historique filtrable par type ou produit
-- Badge d'alerte dans la sidebar lorsque le stock est critique
-
-### 🛒 Gestion des commandes
+### 🛒 Commandes
 - Création, ajout de produits (auto-complétion), modification de quantité
-- Validation atomique via transaction SQL (stock déduit, état mis à jour)
+- Validation atomique (stock déduit + état mis à jour en transaction)
 - Annulation avec restitution du stock
-- Impression après validation : **Reçu Client**, **Format Gestion**, ou les deux
+- Impression : **Reçu Client**, **Format Gestion**, ou les deux
 
-### 📊 Statistiques et rapports
-- CA journalier / sur plage personnalisable
-- Top produits vendus (par quantité ou par montant)
-- Alertes et ruptures en temps réel
-- Graphiques JFreeChart intégrés au tableau de bord
-- Export **PDF** (iText) et **CSV**
+### 📦 Stock & Produits
+- CRUD catégories et produits, Import/Export **CSV**
+- Mouvements de stock (entrée/sortie) avec historique filtrable
+- Badge d'alerte sidebar si stock critique
+
+### 📊 Statistiques
+- CA journalier / par période, top produits
+- Graphiques JFreeChart, export **PDF** et **CSV**
 
 ### 👤 Administration (Admin uniquement)
-- Création, modification, suppression de comptes employés
-- Attribution des rôles
-- **Sauvegarde et Restauration SQL** : Export automatique (`mysqldump`) de l'intégralité de la base et réimportation depuis l'interface en cas de panne (Continuité métier).
+- Gestion des comptes employés (ajout, modification, suppression)
+- 🚫 Auto-suppression bloquée — impossible de supprimer son propre compte
+- 🔑 **Changer mon mot de passe** directement depuis le panneau admin
+- **Sauvegarde & Restauration** du fichier SQLite
 
 ## 🔧 Règles métier
 
-- Le prix de vente doit être strictement positif
-- Le stock ne peut pas être négatif
-- La quantité d'un mouvement doit être > 0
-- Une sortie est refusée si la quantité dépasse le stock disponible
-- Une commande doit contenir au moins une ligne pour être validée
-- Un produit lié à des commandes ne peut pas être supprimé
+- Prix de vente > 0, stock ≥ 0, quantité mouvement > 0
+- Sortie refusée si stock insuffisant
+- Commande vide non validable
+- Produit lié à des commandes non supprimable
 - Login unique par utilisateur
 
 ## 🎯 Points forts
 
-- ✅ Architecture MVC rigoureuse
-- ✅ Transactions SQL atomiques (commit/rollback)
-- ✅ Gestion spécifique des exceptions (SQLException, NumberFormatException…)
-- ✅ Design System centralisé (couleurs, polices, composants)
-- ✅ Performance : Multithreading via `SwingWorker` (UI non-bloquante)
-- ✅ Maintenance : Migration automatique du schéma (`DatabaseUpdater`)
-- ✅ Logging via Log4j2
-- ✅ Statistiques avancées avec graphiques et exports multi-formats (PDF, CSV)
-- ✅ Import/Export CSV
+- ✅ **Zéro Configuration** : base SQLite autonome, aucun serveur
+- ✅ **Multi-plateforme** : releases `.deb`, `.rpm`, `.exe` via GitHub Actions
+- ✅ Architecture MVC rigoureuse, transactions atomiques
+- ✅ Logging Log4j2, statistiques avancées, exports PDF/CSV
 
 ## 🐛 Dépannage
 
 | Problème | Solution |
 |---|---|
-| Connexion refusée | Vérifier que MySQL est démarré et que `config.properties` est correct |
-| Driver introuvable | Vérifier que `mysql-connector-j-*.jar` est dans `/lib` |
-| Produit non supprimable | Le produit est lié à des commandes — archivez-le plutôt |
-| Impression vide | Vérifier qu'une imprimante système est configurée |
-| Export CSV vide | Vérifier qu'il existe des commandes validées pour la période |
-| Compilation échoue | Vérifier que tous les JARs de `/lib` sont dans le classpath |
-
-## 👨‍💻 Auteurs
-
-Développé dans le cadre du projet de POO Java à l'**IAI-TOGO** (2025-2026).
-
-## 📄 Licence
-
-Ce projet est développé à des fins pédagogiques.
+| DB introuvable | Vérifier que `data/gestion_restaurant.db` existe |
+| Driver SQLite manquant | Vérifier que `sqlite-jdbc-*.jar` est dans `/lib` |
+| Produit non supprimable | Produit lié à des commandes — archivez-le |
+| Compilation échoue | Vérifier les JARs dans `/lib` et Java 21+ |

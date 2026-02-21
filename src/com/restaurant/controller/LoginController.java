@@ -4,25 +4,48 @@ import com.restaurant.model.Utilisateur;
 import com.restaurant.service.AuthService;
 import com.restaurant.view.LoginView;
 import com.restaurant.view.MainView;
+import com.restaurant.model.enums.Role;
 import java.sql.SQLException;
 import java.util.prefs.Preferences;
+import javax.swing.JOptionPane;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 public class LoginController {
 
     private static final Logger logger = LogManager.getLogger(LoginController.class);
-
     private LoginView loginView;
     private AuthService authService;
     private Utilisateur utilisateurConnecte;
 
+    // Initialisation du contrôleur et vérification de l'état initial
     public LoginController() {
         this.authService = new AuthService(new com.restaurant.dao.UtilisateurDAO());
         this.loginView = new LoginView(this);
         chargerPreference();
+        verifierEtatBase();
     }
 
+    // Vérifie si la base est vide pour autoriser la création du compte Admin
+    private void verifierEtatBase() {
+        try {
+            if (authService.isBaseVide()) {
+                logger.info("Base de données vide : activation du mode création administrateur");
+                loginView.activerModePremierLancement(true);
+            } else {
+                loginView.activerModePremierLancement(false);
+            }
+        } catch (SQLException e) {
+            logger.error("Erreur critique base de données: " + e.getMessage());
+            loginView.afficherErreur("ERREUR BASE : Table manquante ou inaccessible");
+            JOptionPane.showMessageDialog(loginView,
+                    "Erreur critique de base de données :\n" + e.getMessage() +
+                            "\n\nVérifiez que le fichier gestion_restaurant.db est présent dans le dossier data.",
+                    "Erreur Système", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    // Récupère le dernier utilisateur ayant coché "Se souvenir de moi"
     private void chargerPreference() {
         Preferences prefs = Preferences.userNodeForPackage(LoginController.class);
         String savedUser = prefs.get("remembered_user", "");
@@ -32,26 +55,23 @@ public class LoginController {
         }
     }
 
-    // Affiche la fenêtre de connexion
+    // Affiche la fenêtre principale de connexion
     public void afficherLogin() {
         loginView.setVisible(true);
     }
 
-    // Tente l'authentification et ouvre la vue principale
+    // Gère la tentative d'authentification
     public boolean seConnecter(String nomUtil, String motDePasse) {
         try {
-            if (nomUtil.isEmpty()) {
-                loginView.afficherErreur("Veuillez saisir un nom d'utilisateur");
-                return false;
-            }
-            if (motDePasse.isEmpty()) {
-                loginView.afficherErreur("Veuillez saisir un mot de passe");
+            if (nomUtil.isEmpty() || motDePasse.isEmpty()) {
+                loginView.afficherErreur("Identifiants requis");
                 return false;
             }
 
             utilisateurConnecte = authService.authenticate(nomUtil, motDePasse);
 
             if (utilisateurConnecte != null) {
+                // Gestion de la préférence de mémorisation
                 Preferences prefs = Preferences.userNodeForPackage(LoginController.class);
                 if (loginView.isSeSouvenir()) {
                     prefs.put("remembered_user", nomUtil);
@@ -60,31 +80,29 @@ public class LoginController {
                 }
 
                 loginView.setVisible(false);
-                logger.info("Connexion réussie pour l'utilisateur: " + nomUtil);
+                logger.info("Session ouverte pour : " + nomUtil);
+
+                // Lancement de l'interface principale après succès
                 new MainView(utilisateurConnecte).setVisible(true);
                 return true;
             } else {
-                logger.warn("Échec de connexion (identifiants incorrects) pour l'utilisateur: " + nomUtil);
-                loginView.afficherErreur("Identifiants incorrects");
+                loginView.afficherErreur("Nom d'utilisateur ou mot de passe incorrect");
                 return false;
             }
 
         } catch (SQLException e) {
-            logger.error("Erreur base de données lors de la tentative de connexion: " + e.getMessage(), e);
-            loginView.afficherErreur("Erreur base de données : " + e.getMessage());
+            logger.error("Erreur SQL lors de la connexion : " + e.getMessage());
+            loginView.afficherErreur("Erreur technique de connexion");
             return false;
         }
     }
 
-    // Crée un nouveau compte utilisateur (auto-inscription)
+    // Gère la création du compte initial (Admin) ou des comptes employés
     public boolean creerCompte(String nomUtil, String motDePasse, String confirmation) {
         try {
-            if (nomUtil.isEmpty()) {
-                loginView.afficherErreur("Veuillez saisir un nom d'utilisateur");
-                return false;
-            }
-            if (motDePasse.isEmpty()) {
-                loginView.afficherErreur("Veuillez saisir un mot de passe");
+            // Validation des champs
+            if (nomUtil.isEmpty() || motDePasse.isEmpty()) {
+                loginView.afficherErreur("Tous les champs sont obligatoires");
                 return false;
             }
             if (!motDePasse.equals(confirmation)) {
@@ -92,26 +110,33 @@ public class LoginController {
                 return false;
             }
             if (motDePasse.length() < 4) {
-                loginView.afficherErreur("Le mot de passe doit contenir au moins 4 caractères");
+                loginView.afficherErreur("Le mot de passe est trop court (min 4)");
                 return false;
             }
 
-            boolean success = authService.creerUtilisateur(nomUtil, motDePasse);
-            if (success) {
-                loginView.afficherMessage("Compte créé ! Vous pouvez vous connecter.");
+            // Détermine le rôle automatiquement : ADMIN si base vide, sinon CAISSIER
+            boolean premierUtilisateur = authService.isBaseVide();
+            Role roleAttribue = premierUtilisateur ? Role.ADMIN : Role.CAISSIER;
+
+            boolean succes = authService.creerUtilisateur(nomUtil, motDePasse, roleAttribue);
+
+            if (succes) {
+                loginView.afficherMessage("Compte " + roleAttribue + " créé avec succès");
+                // Met à jour l'interface pour masquer l'option de création
+                verifierEtatBase();
                 return true;
-            } else {
-                loginView.afficherErreur("Erreur lors de la création du compte");
-                return false;
             }
+            return false;
 
         } catch (SQLException e) {
-            loginView.afficherErreur(e.getMessage().contains("existe") ? "Ce nom d'utilisateur existe déjà"
-                    : "Erreur : " + e.getMessage());
+            // Gestion spécifique du doublon de nom (Contrainte UNIQUE en SQL)
+            String msg = e.getMessage().contains("UNIQUE") ? "Ce nom est déjà utilisé" : e.getMessage();
+            loginView.afficherErreur(msg);
             return false;
         }
     }
 
+    // Accesseur pour récupérer l'utilisateur actuellement loggé
     public Utilisateur getUtilisateurConnecte() {
         return utilisateurConnecte;
     }

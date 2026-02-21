@@ -70,4 +70,82 @@
     nbproject/build-impl.xml file. 
 
     -->
+    <target name="-post-jar">
+        <echo message="Préparation du dossier de distribution pour SQLite..."/>
+        
+        <mkdir dir="${dist.dir}/data"/>
+        
+        <copy todir="${dist.dir}/data">
+            <fileset dir="data">
+                <include name="gestion_restaurant.db"/>
+            </fileset>
+        </copy>
+
+        <mkdir dir="${dist.dir}/lib"/>
+        <copy todir="${dist.dir}/lib">
+            <fileset dir="lib">
+                <include name="*.jar"/>
+            </fileset>
+        </copy>
+        
+        <echo message="Dossier dist prêt pour jpackage !"/>
+    </target>
+
+    <target name="package" depends="jar">
+        <echo message="Création de l'installeur avec jpackage..."/>
+        <exec executable="jpackage">
+            <arg value="--input"/>
+            <arg value="${dist.dir}"/>
+            <arg value="--name"/>
+            <arg value="GestionRestaurant"/>
+            <arg value="--main-jar"/>
+            <arg value="GestionRestaurant.jar"/>
+            <arg value="--main-class"/>
+            <arg value="com.restaurant.Main"/>
+            <arg value="--type"/>
+            <arg value="app-image"/> <!-- Par défaut app-image pour tester, peut être changé en deb, rpm, exe -->
+            <arg value="--dest"/>
+            <arg value="build/package"/>
+            <arg value="--icon"/>
+            <arg value="data/icon.png"/>
+            <arg value="--vendor"/>
+            <arg value="RestaurantApp"/>
+            <arg value="--description"/>
+            <arg value="Application de gestion de restaurant"/>
+        </exec>
+        <echo message="Installeur généré dans build/package"/>
+    </target>
+
+    <!-- Cible pour générer un installeur Windows (.exe) via Wine + jpackage -->
+    <target name="package-windows" depends="jar">
+        <echo message="Création de l'installeur Windows (.exe) via Wine..."/>
+        <mkdir dir="build/package-windows"/>
+        <exec executable="wine" failonerror="false">
+            <arg value="jpackage.exe"/>
+            <arg value="--input"/>
+            <arg value="${dist.dir}"/>
+            <arg value="--name"/>
+            <arg value="GestionRestaurant"/>
+            <arg value="--main-jar"/>
+            <arg value="GestionRestaurant.jar"/>
+            <arg value="--main-class"/>
+            <arg value="com.restaurant.Main"/>
+            <arg value="--type"/>
+            <arg value="exe"/>
+            <arg value="--dest"/>
+            <arg value="build/package-windows"/>
+            <arg value="--icon"/>
+            <arg value="data/icon.ico"/>
+            <arg value="--vendor"/>
+            <arg value="RestaurantApp"/>
+            <arg value="--description"/>
+            <arg value="Application de gestion de restaurant"/>
+            <arg value="--win-shortcut"/>
+            <arg value="--win-menu"/>
+            <arg value="--win-dir-chooser"/>
+        </exec>
+        <echo message="Si Wine/jpackage.exe n'est pas disponible, voir README pour l'alternative manuelle."/>
+        <echo message="Installeur Windows disponible dans build/package-windows/"/>
+    </target>
+
 </project>

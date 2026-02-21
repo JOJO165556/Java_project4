@@ -1,135 +1,65 @@
 package com.restaurant.service;
 
-import java.io.BufferedReader;
-import java.io.FileInputStream;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.util.Properties;
-import java.util.ArrayList;
-import java.util.List;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 public class DatabaseBackupService {
 
     private static final Logger logger = LogManager.getLogger(DatabaseBackupService.class);
-
-    private String url = "jdbc:mysql://localhost:3306/gestion_restaurant";
-    private String user = "root";
-    private String password = "";
+    
+    // Le chemin vers la base de données 
+    private static final String DB_SOURCE_PATH = "data/gestion_restaurant.db";
 
     public DatabaseBackupService() {
-        chargerConfiguration();
+        // Plus besoin de charger config.properties pour les backups !
     }
 
-    private void chargerConfiguration() {
-        try (InputStream input = new FileInputStream("config.properties")) {
-            Properties prop = new Properties();
-            prop.load(input);
-            url = prop.getProperty("db.url", url);
-            user = prop.getProperty("db.user", user);
-            password = prop.getProperty("db.password", password);
-        } catch (Exception ex) {
-            logger.warn("Impossible de charger config.properties pour backup. Utilisation des valeurs par défaut.");
-        }
-    }
-
-    private String extraireNomBaseDeDonnees(String dbUrl) {
-        int indexSlash = dbUrl.lastIndexOf("/");
-        if (indexSlash != -1) {
-            String db = dbUrl.substring(indexSlash + 1);
-            int indexParam = db.indexOf("?");
-            if (indexParam != -1) {
-                return db.substring(0, indexParam);
-            }
-            return db;
-        }
-        return "gestion_restaurant";
-    }
-
-    // Exporte la base de données vers un fichier SQL (utilise mysqldump)
+    // Sauvegarde la base de données SQLite en copiant simplement le fichier .db
     public boolean sauvegarderBaseDeDonnees(String cheminDestination) throws Exception {
-        String dbName = extraireNomBaseDeDonnees(url);
-        List<String> command = new ArrayList<>();
+        File source = new File(DB_SOURCE_PATH);
+        File destination = new File(cheminDestination);
 
-        boolean isWindows = System.getProperty("os.name").toLowerCase().startsWith("windows");
-        if (isWindows) {
-            command.add("cmd.exe");
-            command.add("/c");
-        } else {
-            command.add("bash");
-            command.add("-c");
+        if (!source.exists()) {
+            throw new Exception("Le fichier de base de données source n'existe pas : " + DB_SOURCE_PATH);
         }
 
-        String dumpCmd = String.format("mysqldump -u %s %s %s -r \"%s\"",
-                user,
-                (password != null && !password.isEmpty()) ? "-p" + password : "",
-                dbName,
-                cheminDestination);
-
-        if (!isWindows) {
-            command.add(dumpCmd);
-        } else {
-            command.add(dumpCmd);
+        try {
+            // Copie physique du fichier
+            Files.copy(source.toPath(), destination.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            logger.info("Sauvegarde réussie vers : " + cheminDestination);
+            return true;
+        } catch (IOException e) {
+            logger.error("Erreur lors de la sauvegarde SQLite : " + e.getMessage());
+            throw new Exception("Erreur de copie de fichier : " + e.getMessage());
         }
-
-        ProcessBuilder pb = new ProcessBuilder(command);
-        Process process = pb.start();
-
-        int exitCode = process.waitFor();
-        if (exitCode != 0) {
-            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
-            StringBuilder erreur = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                erreur.append(line).append("\n");
-            }
-            throw new Exception("Erreur de sauvegarde (Code: " + exitCode + ") : " + erreur.toString());
-        }
-
-        return true;
     }
 
-    // Restaure la base de données depuis un fichier SQL (utilise mysql)
+    //Restaure la base de données en remplaçant le fichier actuel par une sauvegarde
     public boolean restaurerBaseDeDonnees(String cheminSourceSql) throws Exception {
-        String dbName = extraireNomBaseDeDonnees(url);
-        List<String> command = new ArrayList<>();
+        File sourceBackup = new File(cheminSourceSql);
+        File destinationActive = new File(DB_SOURCE_PATH);
 
-        boolean isWindows = System.getProperty("os.name").toLowerCase().startsWith("windows");
-        if (isWindows) {
-            command.add("cmd.exe");
-            command.add("/c");
-        } else {
-            command.add("bash");
-            command.add("-c");
+        if (!sourceBackup.exists()) {
+            throw new Exception("Le fichier de sauvegarde est introuvable.");
         }
 
-        String importCmd = String.format("mysql -u %s %s %s < \"%s\"",
-                user,
-                (password != null && !password.isEmpty()) ? "-p" + password : "",
-                dbName,
-                cheminSourceSql);
-
-        if (!isWindows) {
-            command.add(importCmd);
-        } else {
-            command.add(importCmd);
-        }
-
-        ProcessBuilder pb = new ProcessBuilder(command);
-        Process process = pb.start();
-
-        int exitCode = process.waitFor();
-        if (exitCode != 0) {
-            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
-            StringBuilder erreur = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                erreur.append(line).append("\n");
+        try {
+            // On s'assure que le dossier data existe
+            if (!destinationActive.getParentFile().exists()) {
+                destinationActive.getParentFile().mkdirs();
             }
-            throw new Exception("Erreur de restauration (Code: " + exitCode + ") : " + erreur.toString());
-        }
 
-        return true;
+            // On remplace le fichier de travail par la sauvegarde
+            Files.copy(sourceBackup.toPath(), destinationActive.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            logger.info("Restauration réussie depuis : " + cheminSourceSql);
+            return true;
+        } catch (IOException e) {
+            logger.error("Erreur lors de la restauration SQLite : " + e.getMessage());
+            throw new Exception("Erreur de remplacement du fichier .db : " + e.getMessage());
+        }
     }
 }

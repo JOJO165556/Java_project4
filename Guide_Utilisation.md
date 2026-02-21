@@ -1,89 +1,74 @@
-# 📖 Guide d'Utilisation — Gestion Restaurant
+# Guide d'Utilisation — Gestion Restaurant
 
 ## 1. Connexion
 
-Lancez l'application. La fenêtre de connexion s'affiche après l'écran de chargement.
+Lancez l'application et saisissez votre identifiant et mot de passe.
 
-- Saisissez vos **identifiant** et **mot de passe**.
-- L'accès aux modules dépend de votre rôle :
-  - **Admin** : accès complet (Commandes, Produits, Stock, Statistiques, Administration).
-  - **Caissier** : accès limité aux **Commandes**.
+- **Rôle Admin** : accès complet (tableau de bord, produits, stock, statistiques, utilisateurs, sauvegarde).
+- **Rôle Caissier** : accès aux commandes uniquement.
 
-> 🔒 L'application se déconnecte automatiquement après **10 minutes d'inactivité**.
+> Au premier lancement (base vide), le formulaire de création du compte Administrateur s'affiche automatiquement.
 
 ---
 
-## 2. Commandes (Caissier & Admin)
+## 2. Gestion des commandes
 
-### Créer une commande
-1. Cliquez sur **Nouvelle Commande**.
-2. Dans le champ de recherche, tapez le nom du produit — une liste de suggestions apparaît.
-3. Sélectionnez le produit, ajustez la quantité, puis cliquez **Ajouter**. 
-   *(Un sablier peut apparaître brièvement : l'application charge les données en arrière-plan pour rester fluide).*
-4. Répétez pour chaque article.
+1. Cliquez sur **Commandes** dans la sidebar.
+2. Cliquez sur **Nouvelle commande** pour créer une commande.
+3. Tapez le nom d'un produit dans le champ de recherche et sélectionnez-le.
+4. Ajustez la quantité puis cliquez **Ajouter**.
+5. Cliquez **Valider** pour finaliser (stock déduit automatiquement).
+6. Cliquez **Imprimer** pour générer le reçu.
 
-### Valider une commande
-1. Cliquez **Valider Commande**.
-2. Confirmez la validation.
-3. Un reçu client PDF est généré automatiquement et sauvegardé dans le dossier `Recus/` situé à la racine du logiciel.
-
-> **Note sur l'identité** : Le nom du caissier connecté est désormais automatiquement attribué à chaque commande. Ces informations sont essentielles pour les rapports de performance par employé disponibles dans l'onglet Statistiques.
-
-### Annuler une commande
-- Cliquez **Annuler Commande**. Le stock est restitué si la commande était déjà validée.
+> Une commande vide ne peut pas être validée. Une annulation restitue le stock.
 
 ---
 
-## 3. Produits & Catégories (Admin)
+## 3. Gestion des produits (Admin)
 
-- **Ajouter / Modifier / Supprimer** via les champs du formulaire.
-- Les produits **en alerte** (stock ≤ seuil) s'affichent en **orange**, en **rupture** (stock = 0) en **rouge**.
-- Utilisez la barre de recherche pour filtrer par nom.
-- **Import / Export CSV** disponible pour les données produits.
+- **Ajouter** : remplir le formulaire (nom, catégorie, prix, stock, seuil d'alerte) puis cliquer **Ajouter**.
+- **Modifier** : sélectionner un produit dans la liste puis cliquer **Modifier**.
+- **Supprimer** : impossible si le produit est lié à des commandes existantes.
+- **Import CSV** : importer une liste de produits depuis un fichier `.csv`.
+- **Export CSV** : exporter la liste actuelle vers un fichier `.csv`.
 
 ---
 
-## 4. Stock (Admin)
+## 4. Gestion du stock (Admin)
 
-1. Sélectionnez un produit.
-2. Choisissez **Entrée** ou **Sortie**, saisissez la quantité et un motif.
-3. Cliquez **Enregistrer**.
-4. L'historique (avec la Réf Facture unique générée à chaque mouvement) est visible en bas de page pour faciliter les audits.
+1. Cliquer sur **Gestion Stock** dans la sidebar.
+2. Sélectionner un produit, choisir le type (Entrée/Sortie), saisir la quantité et le motif.
+3. Valider le mouvement.
 
-> Un badge d'alerte en rouge apparaît dans la sidebar lorsque des produits sont sous leur seuil.
+> Les produits dont le stock est inférieur au seuil d'alerte apparaissent en orange (alerte) ou rouge (rupture). Un badge rouge s'affiche dans la sidebar.
 
 ---
 
 ## 5. Statistiques (Admin)
 
-- **CA journalier / par période** : calculé depuis la vue Statistiques.
-- **Top produits** : par quantité ou par montant sur une plage personnalisable.
-- **Alertes & Ruptures** : tableaux mis à jour en temps réel.
-- **Exporter** :
-  - 🖨️ Imprimer les statistiques (imprimante système)
-  - 📄 Export PDF (iText)
-  - 📊 Export CSV
+- **CA journalier** et **CA par période** (plage de dates personnalisable).
+- **Top produits** vendus (graphique en barres).
+- Export **PDF** et **CSV** disponibles.
 
 ---
 
-## 6. Administration (Admin)
+## 6. Gestion des utilisateurs (Admin)
 
-Accessible via le bouton **Gestion Employés** de la sidebar.
+Accessible via **Utilisateurs** dans la sidebar.
 
-- Créer un employé, lui attribuer un rôle (**Admin** ou **Caissier**), définir son mot de passe.
-- Modifier les informations d'un employé existant.
-- Supprimer un compte (déconseillé si actif).
+- **Ajouter** un employé (nom, mot de passe, rôle).
+- **Modifier** un employé sélectionné.
+- **Supprimer** un employé *(impossible de supprimer son propre compte)*.
+- **🔑 Changer mon MDP** : modifie directement le mot de passe de l'admin connecté (saisie de l'ancien mot de passe requise).
 
 ---
 
 ## 7. Sauvegarde & Restauration (Admin)
 
-Pensé pour garantir la continuité des finances en cas de panne, ce module est accessible via le bouton **Sauvegarde** de la sidebar.
+Accessible via **Sauvegarde** dans la sidebar.
 
-- **Exporter la Sauvegarde** : Génère un fichier `.sql` contenant l'intégralité de l'historique et de la comptabilité du système via `mysqldump`.
-- **Restaurer le Système** : Permet de réinjecter un fichier `.sql` précédent pour retrouver l'état du système à la date choisie. **Attention**, cette action efface les données en cours.
-
-> *Prérequis technique* : Assurez-vous que les commandes `mysql` et `mysqldump` sont reconnues par votre système d'exploitation.
+- **Exporter** : crée une copie du fichier `gestion_restaurant.db` à l'emplacement choisi.
+- **Restaurer** : remplace la base actuelle par un fichier de sauvegarde. ⚠️ Les données actuelles sont écrasées.
 
 ---
 
@@ -91,7 +76,7 @@ Pensé pour garantir la continuité des finances en cas de panne, ce module est 
 
 | Problème | Solution |
 |---|---|
-| Impossible de se connecter | Vérifiez que MySQL est démarré et que `config.properties` est correctement renseigné. |
-| Produit impossible à supprimer | Le produit est lié à des commandes existantes — archivez-le plutôt. |
-| Impression sans résultat | Vérifiez qu'une imprimante système est configurée et disponible. |
-| Export CSV vide | Assurez-vous qu'il existe des données de commande validées pour la période. |
+| Impossible de charger les données | Vérifier que `data/gestion_restaurant.db` est présent et accessible |
+| Produit impossible à supprimer | Produit lié à des commandes — archivez-le ou supprimez les commandes liées |
+| Impression sans résultat | Vérifier qu'une imprimante système est configurée |
+| Export CSV vide | Vérifier qu'il existe des commandes validées pour la période |

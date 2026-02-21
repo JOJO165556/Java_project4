@@ -111,6 +111,11 @@ public class AdminView extends JPanel {
         panelActions.add(btnSupprimer);
         panelActions.add(btnVider);
 
+        JButton btnChangerMdp = new JButton("🔑 Changer mon MDP");
+        DesignSystem.styleButton(btnChangerMdp, DesignSystem.WARNING);
+        btnChangerMdp.addActionListener(e -> ouvrirDialogueChangerMdp());
+        panelActions.add(btnChangerMdp);
+
         JPanel panelHaut = new JPanel(new BorderLayout());
         panelHaut.add(panelForm, BorderLayout.CENTER);
         panelHaut.add(panelActions, BorderLayout.SOUTH);
@@ -171,5 +176,34 @@ public class AdminView extends JPanel {
 
     public void afficherErreur(String msg) {
         JOptionPane.showMessageDialog(this, msg, "Erreur", JOptionPane.ERROR_MESSAGE);
+    }
+
+    // Ouvre un dialogue de changement de mot de passe pour l'admin connecté
+    private void ouvrirDialogueChangerMdp() {
+        JPanel panel = new JPanel(new GridLayout(3, 2, 8, 8));
+        JPasswordField txtAncien = new JPasswordField(15);
+        JPasswordField txtNouveau = new JPasswordField(15);
+        JPasswordField txtConfirm = new JPasswordField(15);
+        panel.add(new JLabel("Ancien mot de passe :"));
+        panel.add(txtAncien);
+        panel.add(new JLabel("Nouveau mot de passe :"));
+        panel.add(txtNouveau);
+        panel.add(new JLabel("Confirmer le nouveau :"));
+        panel.add(txtConfirm);
+
+        int result = JOptionPane.showConfirmDialog(this, panel,
+                "Changer mon mot de passe", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+
+        if (result == JOptionPane.OK_OPTION) {
+            String ancien = new String(txtAncien.getPassword());
+            String nouveau = new String(txtNouveau.getPassword());
+            String confirm = new String(txtConfirm.getPassword());
+
+            if (!nouveau.equals(confirm)) {
+                afficherErreur("Les nouveaux mots de passe ne correspondent pas.");
+                return;
+            }
+            controller.changerMonMotDePasse(ancien, nouveau);
+        }
     }
 }

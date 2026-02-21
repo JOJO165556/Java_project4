@@ -25,10 +25,12 @@ public class MainView extends JFrame {
 
     private void defineIcon() {
         try {
-            ImageIcon icon = new ImageIcon(getClass().getResource("/icon.png"));
-            if (icon.getImage() != null)
+            ImageIcon icon = com.restaurant.utils.ResourceUtils.getIcon("data/icon.png");
+            if (icon != null && icon.getImage() != null) {
                 setIconImage(icon.getImage());
+            }
         } catch (Exception e) {
+            logger.warn("Impossible de charger l'icône : " + e.getMessage());
         }
     }
 
@@ -116,7 +118,9 @@ public class MainView extends JFrame {
         panelContent.add(new StockView(), "Stocks");
         panelContent.add(new StatistiqueView(), "Statistiques");
         if (Role.ADMIN.equals(utilisateurConnecte.getRole())) {
-            panelContent.add(new AdminView(new com.restaurant.controller.AdminController()), "Employes");
+            panelContent.add(
+                    new AdminView(new com.restaurant.controller.AdminController(utilisateurConnecte.getIdUtil())),
+                    "Employes");
             panelContent.add(new DatabaseView(new DatabaseController()), "Sauvegarde");
         }
 
@@ -291,8 +295,8 @@ public class MainView extends JFrame {
                     org.jfree.chart.renderer.category.BarRenderer renderer = (org.jfree.chart.renderer.category.BarRenderer) plot
                             .getRenderer();
                     renderer.setSeriesPaint(0, DesignSystem.PRIMARY);
-                    renderer.setMaximumBarWidth(0.10); // Thinner bars
-                    renderer.setItemMargin(0.10); // More space between bars
+                    renderer.setMaximumBarWidth(0.10);
+                    renderer.setItemMargin(0.10);
 
                     chartPanel.setChart(chart);
 

@@ -25,10 +25,13 @@ public class PrintService {
                     return NO_SUCH_PAGE;
 
                 Graphics2D g2d = (Graphics2D) graphics;
+                // Activation de la netteté du texte ici 
+                g2d.setRenderingHint(java.awt.RenderingHints.KEY_TEXT_ANTIALIASING, java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+                
                 g2d.translate(pageFormat.getImageableX(), pageFormat.getImageableY());
 
                 int y = 50;
-                int x = 50;
+                int x = 10;
                 g2d.setFont(new Font("Monospaced", Font.BOLD, 14));
                 g2d.drawString("--- REÇU CLIENT ---", x, y);
                 y += 20;

@@ -16,12 +16,13 @@ public class LigneCommandeDAO {
         ligne.setIdPro(rs.getInt("id_pro"));
         ligne.setQteLig(rs.getInt("qte_lig"));
         ligne.setPrixUnit(rs.getDouble("prix_unit"));
-        ligne.setMontant(rs.getDouble("montant"));
+        // Note : Le montant est calculé automatiquement dans l'objet LigneCommande
+        // via ses setters internes suite au passage à SQLite.
+
         ligne.setProduit(produitDAO.getById(ligne.getIdPro()));
         return ligne;
     }
 
-    // Crée une nouvelle ligne de commande
     public int create(LigneCommande ligne) throws SQLException {
         String sql = "INSERT INTO LIG_COMMANDE (id_cmde, id_pro, qte_lig, prix_unit) VALUES (?, ?, ?, ?)";
         Connection conn = ConnectionDB.getConnection();
@@ -35,8 +36,8 @@ public class LigneCommandeDAO {
         if (stmt.executeUpdate() > 0) {
             ResultSet rs = stmt.getGeneratedKeys();
             if (rs.next()) {
-                ligne.setIdLig(rs.getInt(1));
                 int id = rs.getInt(1);
+                ligne.setIdLig(id);
                 rs.close();
                 stmt.close();
                 return id;
@@ -66,8 +67,9 @@ public class LigneCommandeDAO {
         PreparedStatement stmt = conn.prepareStatement(sql);
         stmt.setInt(1, idCommande);
         ResultSet rs = stmt.executeQuery();
-        while (rs.next())
+        while (rs.next()) {
             lignes.add(fromResultSet(rs));
+        }
         rs.close();
         stmt.close();
         return lignes;
@@ -106,9 +108,9 @@ public class LigneCommandeDAO {
         return ok;
     }
 
-    // Calcule le montant total des lignes d'une commande
     public double calculerTotalCommande(int idCommande) throws SQLException {
-        String sql = "SELECT SUM(montant) FROM LIG_COMMANDE WHERE id_cmde = ?";
+        // Calcul dynamique car la colonne 'montant' n'existe plus en BD
+        String sql = "SELECT SUM(qte_lig * prix_unit) FROM LIG_COMMANDE WHERE id_cmde = ?";
         Connection conn = ConnectionDB.getConnection();
         PreparedStatement stmt = conn.prepareStatement(sql);
         stmt.setInt(1, idCommande);

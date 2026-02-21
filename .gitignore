@@ -9,50 +9,47 @@ nbproject/private/
 nbbuild/
 nbdist/
 nb-configuration.xml
+manifest.mf
 
 # ─── IDEs ─────────────────────────────────────────────
-# IntelliJ IDEA
 .idea/
 *.iml
-
-# Eclipse
 .classpath
 .project
 .settings/
-
-# VS Code
 .vscode/
 
-# ─── OS artefacts Linux ───────────────────────────────
+# ─── OS artefacts ─────────────────────────────────────
 *~
 .nfs*
-
-# ─── OS artefacts Windows ────────────────────────────-
 Thumbs.db
-Thumbs.db:encryptable
-ehthumbs.db
-ehthumbs_vista.db
 Desktop.ini
 $RECYCLE.BIN/
 *.lnk
-
-# ─── OS artefacts macOS ───────────────────────────────
 .DS_Store
 .AppleDouble
-.LSOverride
 
 # ─── Application ──────────────────────────────────────
-# Credentials — NE JAMAIS COMMITER
-config.properties
+# Base de données (contient les données utilisateurs — ne pas commiter)
+data/*.db
+data/*.sqbpro
 
 # Logs
 logs/
 *.log
 
-# Generated Receipts (PDF)
+# Reçus générés (PDF)
 Recus/
 
-# SQL Backups and generated files
-*.sql
+# Dumps et sauvegardes SQL temporaires
+*.sql_bak
+backup_*.sql
+
+# Sortie du build et du packaging
+build/
+dist/
+nbdist/
+nbbuild/
 sources.txt
 DbMigrate.*
+build/package-windows/

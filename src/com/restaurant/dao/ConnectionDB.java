@@ -1,48 +1,38 @@
 package com.restaurant.dao;
 
-import java.io.FileInputStream;
-import java.io.InputStream;
+import com.restaurant.utils.ResourceUtils;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-import java.util.Properties;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-// Classe utilitaire pour la connexion JDBC à MySQL
 public class ConnectionDB {
 
     private static final Logger logger = LogManager.getLogger(ConnectionDB.class);
 
-    private static String URL = "jdbc:mysql://localhost:3306/gestion_restaurant";
-    private static String USER = "root";
-    private static String PASSWORD = "";
-
     private static Connection connection = null;
-
-    static {
-        try (InputStream input = new FileInputStream("config.properties")) {
-            Properties prop = new Properties();
-            prop.load(input);
-            URL = prop.getProperty("db.url", URL);
-            USER = prop.getProperty("db.user", USER);
-            PASSWORD = prop.getProperty("db.password", PASSWORD);
-        } catch (Exception ex) {
-            logger.warn("Le fichier config.properties n'a pas pu être chargé, utilisation des paramètres par défaut.");
-        }
-    }
 
     // Singleton pour récupérer la connexion active
     public static Connection getConnection() {
         try {
             if (connection == null || connection.isClosed()) {
-                Class.forName("com.mysql.cj.jdbc.Driver");
-                connection = DriverManager.getConnection(URL, USER, PASSWORD);
+                // Chargement du driver SQLite
+                Class.forName("org.sqlite.JDBC");
+
+                // Résolution robuste du chemin (Mode Dev ou jpackage)
+                String absolutePath = ResourceUtils.getDataPath("gestion_restaurant.db");
+
+                logger.info("Connexion SQLite vers : " + absolutePath);
+
+                connection = DriverManager.getConnection("jdbc:sqlite:" + absolutePath);
+                logger.info("Connexion SQLite établie avec succès.");
             }
         } catch (ClassNotFoundException e) {
-            logger.error("Driver MySQL introuvable: " + e.getMessage());
+            logger.error("Driver SQLite introuvable : " + e.getMessage());
         } catch (SQLException e) {
-            logger.error("Erreur de connexion a la base de donnees: " + e.getMessage());
+            logger.error("Erreur de connexion (CANTOPEN): " + e.getMessage() + " [Path="
+                    + ResourceUtils.getDataPath("gestion_restaurant.db") + "]");
         }
         return connection;
     }

@@ -16,11 +16,6 @@ public class CommandeDAO {
         if (ts != null) {
             c.setDate(ts.toLocalDateTime());
         } else {
-            // If the date is null in the database, it means the column might not have a
-            // default.
-            // However, the instruction implies adding a default to the DB.
-            // For now, we'll keep the existing fallback to current time if DB returns null.
-            // The ALTER TABLE statement should be in a database migration script, not here.
             c.setDate(java.time.LocalDateTime.now());
         }
         c.setEtat(EtatCommande.valueOf(rs.getString("etat")));
@@ -30,9 +25,9 @@ public class CommandeDAO {
         return c;
     }
 
-    // Crée une nouvelle commande et retourne son ID
     public int create(Commande commande) throws SQLException {
-        String sql = "INSERT INTO COMMANDE (date, etat, total, nom_util) VALUES (NOW(), ?, ?, ?)";
+        // SQLite utilise CURRENT_TIMESTAMP au lieu de NOW()
+        String sql = "INSERT INTO COMMANDE (date, etat, total, nom_util) VALUES (CURRENT_TIMESTAMP, ?, ?, ?)";
         Connection conn = ConnectionDB.getConnection();
         PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
 
@@ -43,9 +38,13 @@ public class CommandeDAO {
         if (stmt.executeUpdate() > 0) {
             ResultSet rs = stmt.getGeneratedKeys();
             if (rs.next()) {
-                commande.setIdCmde(rs.getInt(1));
-                return rs.getInt(1);
+                int id = rs.getInt(1);
+                commande.setIdCmde(id);
+                rs.close();
+                stmt.close();
+                return id;
             }
+            rs.close();
         }
         stmt.close();
         return -1;
@@ -76,7 +75,6 @@ public class CommandeDAO {
         return commandes;
     }
 
-    // Met à jour l'état, le total et l'utilisateur d'une commande
     public boolean update(Commande commande) throws SQLException {
         String sql = "UPDATE COMMANDE SET etat=?, total=?, nom_util=? WHERE id_cmde=?";
         Connection conn = ConnectionDB.getConnection();
@@ -100,7 +98,6 @@ public class CommandeDAO {
         return ok;
     }
 
-    // Supprime les commandes en cours sans montant (vides)
     public int deleteEmptyOrders() throws SQLException {
         String sql = "DELETE FROM COMMANDE WHERE etat = 'EN_COURS' AND total = 0";
         Connection conn = ConnectionDB.getConnection();
@@ -124,16 +121,14 @@ public class CommandeDAO {
         return commandes;
     }
 
-    // Récupère les commandes sur une période donnée
     public List<Commande> findByPeriode(LocalDate debut, LocalDate fin) throws SQLException {
         List<Commande> commandes = new ArrayList<>();
-        // Utiliser DATE() pour extraire uniquement la partie date afin que la
-        // comparaison soit correcte avec LocalDate
+        // DATE(date) fonctionne en SQLite pour comparer des chaînes ISO
         String sql = "SELECT * FROM COMMANDE WHERE DATE(date) BETWEEN ? AND ? ORDER BY date DESC";
         Connection conn = ConnectionDB.getConnection();
         PreparedStatement stmt = conn.prepareStatement(sql);
-        stmt.setDate(1, Date.valueOf(debut));
-        stmt.setDate(2, Date.valueOf(fin));
+        stmt.setString(1, debut.toString()); // SQLite préfère les strings ISO
+        stmt.setString(2, fin.toString());
         ResultSet rs = stmt.executeQuery();
         while (rs.next())
             commandes.add(fromResultSet(rs));

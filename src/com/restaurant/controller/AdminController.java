@@ -13,9 +13,11 @@ public class AdminController {
 
     private AdminView adminView;
     private UtilisateurDAO utilisateurDAO;
+    private int idAdminConnecte; // ID de l'admin actuellement connecté
 
-    public AdminController() {
+    public AdminController(int idAdminConnecte) {
         this.utilisateurDAO = new UtilisateurDAO();
+        this.idAdminConnecte = idAdminConnecte;
     }
 
     public void setView(AdminView view) {
@@ -87,8 +89,12 @@ public class AdminController {
         }
     }
 
-    // Supprime un utilisateur par son ID
+    // Supprime un utilisateur par son ID — bloque l'auto-suppression
     public void supprimerUtilisateur(int idUtil) {
+        if (idUtil == idAdminConnecte) {
+            afficherErreur("Vous ne pouvez pas supprimer votre propre compte.");
+            return;
+        }
         try {
             if (utilisateurDAO.delete(idUtil)) {
                 if (adminView != null) {
@@ -100,6 +106,33 @@ public class AdminController {
             }
         } catch (SQLException e) {
             afficherErreur("Erreur lors de la suppression : " + e.getMessage());
+        }
+    }
+
+    // Change le mot de passe de l'admin connecté
+    public void changerMonMotDePasse(String ancienMdp, String nouveauMdp) {
+        try {
+            Utilisateur admin = utilisateurDAO.findById(idAdminConnecte);
+            if (admin == null) {
+                afficherErreur("Compte introuvable.");
+                return;
+            }
+            if (!admin.getMdp().equals(PasswordUtils.hashPassword(ancienMdp))) {
+                afficherErreur("Ancien mot de passe incorrect.");
+                return;
+            }
+            if (nouveauMdp.length() < 4) {
+                afficherErreur("Le nouveau mot de passe est trop court (min 4 caractères).");
+                return;
+            }
+            admin.setMdp(PasswordUtils.hashPassword(nouveauMdp));
+            if (utilisateurDAO.update(admin)) {
+                adminView.afficherMessage("Mot de passe modifié avec succès.");
+            } else {
+                afficherErreur("La mise à jour a échoué.");
+            }
+        } catch (SQLException e) {
+            afficherErreur("Erreur lors du changement de mot de passe : " + e.getMessage());
         }
     }
 
