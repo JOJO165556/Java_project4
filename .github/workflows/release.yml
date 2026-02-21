@@ -3,13 +3,12 @@ name: Build & Release
 on:
   push:
     tags:
-      - 'v*'   # Déclenché sur les tags du type v1.0.0, v2.1.3, etc.
+      - 'v*'
 
 permissions:
-  contents: write  # Nécessaire pour créer une Release GitHub
+  contents: write
 
 jobs:
-  # ── Job 1 : Build Linux (.deb et .rpm) ──────────────────────────────────
   build-linux:
     name: Package Linux (deb + rpm)
     runs-on: ubuntu-latest
@@ -26,28 +25,29 @@ jobs:
       - name: Ant
         run: sudo apt-get install -y ant
 
-      - name: Dépendances RPM (fakeroot + rpm)
+      - name: Dépendances RPM
         run: sudo apt-get install -y rpm fakeroot binutils
 
       - name: Build JAR
         run: ant jar
 
-      - name: Package .deb
+      - name: Package Linux (DEB & RPM)
         run: |
+          # On nettoie la version (v1.0.0 -> 1.0.0)
+          CLEAN_VERSION=$(echo "${{ github.ref_name }}" | sed 's/v//g')
+          
+          # Génération du DEB (nom en minuscules pour debian)
           jpackage \
             --input dist \
-            --name GestionRestaurant \
+            --name gestionrestaurant \
             --main-jar GestionRestaurant.jar \
             --main-class com.restaurant.Main \
             --type deb \
             --dest build/pkg-linux \
-            --icon data/icon.png \
             --vendor "RestaurantApp" \
-            --description "Application de gestion de restaurant" \
-            --app-version ${{ github.ref_name }}
+            --app-version $CLEAN_VERSION
 
-      - name: Package .rpm
-        run: |
+          # Génération du RPM
           jpackage \
             --input dist \
             --name GestionRestaurant \
@@ -55,10 +55,8 @@ jobs:
             --main-class com.restaurant.Main \
             --type rpm \
             --dest build/pkg-linux \
-            --icon data/icon.png \
             --vendor "RestaurantApp" \
-            --description "Application de gestion de restaurant" \
-            --app-version ${{ github.ref_name }}
+            --app-version $CLEAN_VERSION
 
       - name: Upload artifacts Linux
         uses: actions/upload-artifact@v4
@@ -66,7 +64,6 @@ jobs:
           name: linux-packages
           path: build/pkg-linux/*.{deb,rpm}
 
-  # ── Job 2 : Build Windows (.exe) ────────────────────────────────────────
   build-windows:
     name: Package Windows (exe)
     runs-on: windows-latest
@@ -85,7 +82,7 @@ jobs:
         with:
           version: latest
 
-      - name: WiX Toolset (requis par jpackage pour .exe)
+      - name: WiX Toolset
         run: |
           choco install wixtoolset -y
           echo "C:\Program Files (x86)\WiX Toolset v3.14\bin" >> $env:GITHUB_PATH
@@ -96,6 +93,7 @@ jobs:
 
       - name: Package .exe
         run: |
+          $CleanVersion = "${{ github.ref_name }}".Replace("v", "")
           jpackage `
             --input dist `
             --name GestionRestaurant `
@@ -103,10 +101,8 @@ jobs:
             --main-class com.restaurant.Main `
             --type exe `
             --dest build/pkg-windows `
-            --icon data/icon.png `
             --vendor "RestaurantApp" `
-            --description "Application de gestion de restaurant" `
-            --app-version ${{ github.ref_name }} `
+            --app-version $CleanVersion `
             --win-shortcut `
             --win-menu `
             --win-dir-chooser
@@ -118,43 +114,25 @@ jobs:
           name: windows-package
           path: build/pkg-windows/*.exe
 
-  # ── Job 3 : Création de la GitHub Release ───────────────────────────────
   release:
     name: Créer la Release GitHub
     needs: [build-linux, build-windows]
     runs-on: ubuntu-latest
     steps:
-      - name: Download Linux packages
+      - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          name: linux-packages
           path: artifacts/
+          merge-multiple: true
 
-      - name: Download Windows package
-        uses: actions/download-artifact@v4
-        with:
-          name: windows-package
-          path: artifacts/
-
-      - name: Créer la Release et uploader les packages
+      - name: Créer la Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           name: "GestionRestaurant ${{ github.ref_name }}"
           body: |
             ## 📦 GestionRestaurant ${{ github.ref_name }}
-
-            ### Téléchargements
-            | Plateforme | Fichier |
-            |---|---|
-            | 🐧 Linux (Debian/Ubuntu) | `.deb` |
-            | 🧅 Linux (Fedora/RHEL) | `.rpm` |
-            | 🪟 Windows | `.exe` |
-
-            ### Installation
-            - **Linux Debian** : `sudo dpkg -i GestionRestaurant_*.deb`
-            - **Linux RPM** : `sudo rpm -i GestionRestaurant-*.rpm`
-            - **Windows** : Exécutez `.exe` et suivez l'assistant
+            Version stable générée automatiquement.
           draft: false
           prerelease: false
           files: artifacts/*
