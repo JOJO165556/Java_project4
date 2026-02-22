@@ -3,12 +3,13 @@ name: Build & Release
 on:
   push:
     tags:
-      - 'v*'
+      - 'v*'   # Déclenché sur les tags du type v1.0.0, v2.1.3, etc.
 
 permissions:
-  contents: write
+  contents: write  # Nécessaire pour créer une Release GitHub
 
 jobs:
+  # ── Job 1 : Build Linux (.deb et .rpm) ──────────────────────────────────
   build-linux:
     name: Package Linux (deb + rpm)
     runs-on: ubuntu-latest
@@ -25,7 +26,7 @@ jobs:
       - name: Ant
         run: sudo apt-get install -y ant
 
-      - name: Dépendances RPM
+      - name: Dépendances RPM (fakeroot + rpm)
         run: sudo apt-get install -y rpm fakeroot binutils
 
       - name: Build JAR
@@ -36,7 +37,10 @@ jobs:
           # On nettoie la version (v1.0.0 -> 1.0.0)
           CLEAN_VERSION=$(echo "${{ github.ref_name }}" | sed 's/v//g')
           
-          # Génération du DEB (nom en minuscules pour debian)
+          # On crée explicitement le dossier de destination
+          mkdir -p build/pkg-linux
+          
+          # Génération du DEB (nom en minuscules requis par Debian)
           jpackage \
             --input dist \
             --name gestionrestaurant \
@@ -45,6 +49,7 @@ jobs:
             --type deb \
             --dest build/pkg-linux \
             --vendor "RestaurantApp" \
+            --description "Application de gestion de restaurant" \
             --app-version $CLEAN_VERSION
 
           # Génération du RPM
@@ -56,14 +61,17 @@ jobs:
             --type rpm \
             --dest build/pkg-linux \
             --vendor "RestaurantApp" \
+            --description "Application de gestion de restaurant" \
             --app-version $CLEAN_VERSION
 
       - name: Upload artifacts Linux
         uses: actions/upload-artifact@v4
         with:
           name: linux-packages
-          path: build/pkg-linux/*.{deb,rpm}
+          # On uploade tout le dossier pour éviter les erreurs de wildcard
+          path: build/pkg-linux/
 
+  # ── Job 2 : Build Windows (.exe) ────────────────────────────────────────
   build-windows:
     name: Package Windows (exe)
     runs-on: windows-latest
@@ -82,7 +90,7 @@ jobs:
         with:
           version: latest
 
-      - name: WiX Toolset
+      - name: WiX Toolset (requis par jpackage pour .exe)
         run: |
           choco install wixtoolset -y
           echo "C:\Program Files (x86)\WiX Toolset v3.14\bin" >> $env:GITHUB_PATH
@@ -93,7 +101,12 @@ jobs:
 
       - name: Package .exe
         run: |
+          # Nettoyage de la version pour Windows (ex: v1.0.0 -> 1.0.0)
           $CleanVersion = "${{ github.ref_name }}".Replace("v", "")
+          
+          # Création du dossier
+          New-Item -ItemType Directory -Force -Path build/pkg-windows
+
           jpackage `
             --input dist `
             --name GestionRestaurant `
@@ -102,6 +115,7 @@ jobs:
             --type exe `
             --dest build/pkg-windows `
             --vendor "RestaurantApp" `
+            --description "Application de gestion de restaurant" `
             --app-version $CleanVersion `
             --win-shortcut `
             --win-menu `
@@ -112,8 +126,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: windows-package
-          path: build/pkg-windows/*.exe
+          path: build/pkg-windows/
 
+  # ── Job 3 : Création de la GitHub Release ───────────────────────────────
   release:
     name: Créer la Release GitHub
     needs: [build-linux, build-windows]
@@ -125,14 +140,21 @@ jobs:
           path: artifacts/
           merge-multiple: true
 
-      - name: Créer la Release
+      - name: Créer la Release et uploader les packages
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           name: "GestionRestaurant ${{ github.ref_name }}"
           body: |
             ## 📦 GestionRestaurant ${{ github.ref_name }}
-            Version stable générée automatiquement.
+
+            ### Téléchargements
+            - 🐧 **Linux** : Paquets `.deb` (Ubuntu/Debian) et `.rpm` (Fedora/RHEL)
+            - 🪟 **Windows** : Installateur `.exe` avec raccourci bureau
+
+            ### Installation
+            - **Debian/Ubuntu** : `sudo dpkg -i gestionrestaurant_*.deb`
+            - **Windows** : Lancez le `.exe` et suivez les instructions.
           draft: false
           prerelease: false
           files: artifacts/*
