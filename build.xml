@@ -135,7 +135,7 @@
             <arg value="--dest"/>
             <arg value="build/package-windows"/>
             <arg value="--icon"/>
-            <arg value="data/icon.ico"/>
+            <arg value="data/icon.png"/>
             <arg value="--vendor"/>
             <arg value="RestaurantApp"/>
             <arg value="--description"/>

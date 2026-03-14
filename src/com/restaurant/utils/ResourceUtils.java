@@ -10,41 +10,49 @@ import org.apache.logging.log4j.Logger;
 public class ResourceUtils {
     private static final Logger logger = LogManager.getLogger(ResourceUtils.class);
 
-    // Retourne le chemin absolu vers un fichier dans le dossier "data"
+    /**
+     * Retourne le chemin absolu vers un fichier dans le dossier "data".
+     * Fonctionne en mode développement ET en mode jpackage (Windows exe, Linux deb/rpm, macOS dmg).
+     *
+     * Structure jpackage typique :
+     *   Windows : InstallDir\app\GestionRestaurant.jar  → data\ est dans app\data\
+     *   Linux   : /opt/gestionrestaurant/lib/app/GestionRestaurant.jar → data/ est dans app/data/
+     */
     public static String getDataPath(String fileName) {
-        // Mode développement : cherche dans le répertoire courant
+        // 1. Mode développement : répertoire de travail courant
         File devFile = new File("data/" + fileName);
         if (devFile.exists()) {
+            logger.debug("Ressource trouvée (dev) : " + devFile.getAbsolutePath());
             return devFile.getAbsolutePath();
         }
 
-        // Mode jpackage : cherche par rapport au JAR
+        // 2. Mode jpackage : remonte jusqu'à 4 niveaux depuis le JAR
         try {
-            File jarPath = new File(ResourceUtils.class.getProtectionDomain()
+            File jarFile = new File(ResourceUtils.class.getProtectionDomain()
                     .getCodeSource().getLocation().toURI());
-            File jarDir = jarPath.getParentFile();
-
-            if (jarDir != null) {
-                // Cherche dans lib/app/data/ (structure jpackage)
-                File packagedFile = new File(jarDir, "data/" + fileName);
-                if (packagedFile.exists()) {
-                    return packagedFile.getAbsolutePath();
+            // Commence depuis le répertoire contenant le JAR
+            File dir = jarFile.getParentFile();
+            for (int level = 0; level < 4 && dir != null; level++) {
+                File candidate = new File(dir, "data/" + fileName);
+                if (candidate.exists()) {
+                    logger.info("Ressource trouvée (jpackage niveau " + level + ") : " + candidate.getAbsolutePath());
+                    return candidate.getAbsolutePath();
                 }
-
-                // Cherche à la racine de l'application
-                File rootDir = jarDir.getParentFile();
-                if (rootDir != null) {
-                    File dataInRoot = new File(rootDir, "data/" + fileName);
-                    if (dataInRoot.exists()) {
-                        return dataInRoot.getAbsolutePath();
-                    }
-                }
+                dir = dir.getParentFile();
             }
         } catch (URISyntaxException e) {
             logger.warn("Impossible de résoudre le chemin du JAR : " + e.getMessage());
         }
 
-        // Fallback : chemin relatif par défaut
+        // 3. Fallback : répertoire home utilisateur (portable, toujours accessible en écriture)
+        File homeData = new File(System.getProperty("user.home"), ".gestionrestaurant/data/" + fileName);
+        if (homeData.exists()) {
+            logger.info("Ressource trouvée (home) : " + homeData.getAbsolutePath());
+            return homeData.getAbsolutePath();
+        }
+
+        // 4. Dernier recours : chemin relatif (peut échouer si le répertoire courant est invalide)
+        logger.warn("Ressource introuvable, fallback relatif : data/" + fileName);
         return devFile.getAbsolutePath();
     }
 

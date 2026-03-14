@@ -32,14 +32,20 @@ jobs:
       - name: Build JAR
         run: ant jar
 
+      - name: Copier data/ dans dist/ (requis par jpackage)
+        run: |
+          mkdir -p dist/data
+          cp -r data/gestion_restaurant.db dist/data/
+          cp -r data/icon.png dist/data/
+
       - name: Package Linux (DEB & RPM)
         run: |
           # On nettoie la version (v1.0.0 -> 1.0.0)
           CLEAN_VERSION=$(echo "${{ github.ref_name }}" | sed 's/v//g')
-          
+
           # On crée explicitement le dossier de destination
           mkdir -p build/pkg-linux
-          
+
           # Génération du DEB (nom en minuscules requis par Debian)
           jpackage \
             --input dist \
@@ -50,19 +56,25 @@ jobs:
             --dest build/pkg-linux \
             --vendor "RestaurantApp" \
             --description "Application de gestion de restaurant" \
-            --app-version $CLEAN_VERSION
+            --app-version $CLEAN_VERSION \
+            --linux-shortcut \
+            --linux-app-category "Office" \
+            --java-options "-Dfile.encoding=UTF-8"
 
-          # Génération du RPM
+          # Génération du RPM (nom en minuscules obligatoire pour RPM)
           jpackage \
             --input dist \
-            --name GestionRestaurant \
+            --name gestionrestaurant \
             --main-jar GestionRestaurant.jar \
             --main-class com.restaurant.Main \
             --type rpm \
             --dest build/pkg-linux \
             --vendor "RestaurantApp" \
             --description "Application de gestion de restaurant" \
-            --app-version $CLEAN_VERSION
+            --app-version $CLEAN_VERSION \
+            --linux-shortcut \
+            --linux-app-category "Office" \
+            --java-options "-Dfile.encoding=UTF-8"
 
       - name: Upload artifacts Linux
         uses: actions/upload-artifact@v4
@@ -99,13 +111,24 @@ jobs:
       - name: Build JAR
         run: ant jar
 
+      - name: Copier data/ dans dist/ (requis par jpackage)
+        run: |
+          New-Item -ItemType Directory -Force -Path dist\data
+          Copy-Item data\gestion_restaurant.db dist\data\
+          Copy-Item data\icon.png dist\data\
+        shell: pwsh
+
       - name: Package .exe
         run: |
           # Nettoyage de la version pour Windows (ex: v1.0.0 -> 1.0.0)
           $CleanVersion = "${{ github.ref_name }}".Replace("v", "")
-          
-          # Création du dossier
-          New-Item -ItemType Directory -Force -Path build/pkg-windows
+
+          # Répertoire temporaire dédié pour sqlite-jdbc (extraction des DLLs natives)
+          $TmpDir = "$env:APPDATA\GestionRestaurant\tmp"
+          New-Item -ItemType Directory -Force -Path $TmpDir | Out-Null
+
+          # Création du dossier de sortie
+          New-Item -ItemType Directory -Force -Path build\pkg-windows
 
           jpackage `
             --input dist `
@@ -113,10 +136,12 @@ jobs:
             --main-jar GestionRestaurant.jar `
             --main-class com.restaurant.Main `
             --type exe `
-            --dest build/pkg-windows `
+            --dest build\pkg-windows `
             --vendor "RestaurantApp" `
             --description "Application de gestion de restaurant" `
             --app-version $CleanVersion `
+            --java-options '"-Dfile.encoding=UTF-8"' `
+            --java-options '"-Djava.io.tmpdir=$APPDATA\GestionRestaurant\tmp"' `
             --win-shortcut `
             --win-menu `
             --win-dir-chooser
@@ -126,7 +151,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: windows-package
-          path: build/pkg-windows/
+          path: build\pkg-windows\
 
   # ── Job 3 : Création de la GitHub Release ───────────────────────────────
   release:
@@ -154,6 +179,7 @@ jobs:
 
             ### Installation
             - **Debian/Ubuntu** : `sudo dpkg -i gestionrestaurant_*.deb`
+            - **Fedora/RHEL** : `sudo rpm -i gestionrestaurant-*.rpm`
             - **Windows** : Lancez le `.exe` et suivez les instructions.
           draft: false
           prerelease: false
