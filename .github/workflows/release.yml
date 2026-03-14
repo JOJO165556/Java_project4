@@ -32,12 +32,6 @@ jobs:
       - name: Build JAR
         run: ant jar
 
-      - name: Copier data/ dans dist/ (requis par jpackage)
-        run: |
-          mkdir -p dist/data
-          cp -r data/gestion_restaurant.db dist/data/
-          cp -r data/icon.png dist/data/
-
       - name: Package Linux (DEB & RPM)
         run: |
           # On nettoie la version (v1.0.0 -> 1.0.0)
@@ -110,13 +104,6 @@ jobs:
 
       - name: Build JAR
         run: ant jar
-
-      - name: Copier data/ dans dist/ (requis par jpackage)
-        run: |
-          New-Item -ItemType Directory -Force -Path dist\data
-          Copy-Item data\gestion_restaurant.db dist\data\
-          Copy-Item data\icon.png dist\data\
-        shell: pwsh
 
       - name: Package .exe
         run: |

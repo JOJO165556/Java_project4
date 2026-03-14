@@ -30,9 +30,9 @@ $RECYCLE.BIN/
 .AppleDouble
 
 # ─── Application ──────────────────────────────────────
-# Base de données (contient les données utilisateurs — ne pas commiter)
-data/*.db
+# Fichier de projet SQLite Browser (pas utile dans le repo)
 data/*.sqbpro
+# Note : data/gestion_restaurant.db est commité pour fournir le schéma initial au CI
 
 # Logs
 logs/
